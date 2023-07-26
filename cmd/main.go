@@ -29,7 +29,7 @@ func main() {
 
 	traceHandler := handler.NewTraceHandler(redisHandler)
 
-	http.HandleFunc("/", traceHandler.HandleTraceRequest)
+	http.HandleFunc("/v1/traces", traceHandler.HandleTraceRequest)
 
 	logger.Debug(LOG_TAG, "Starting Server at http://localhost:8147/")
 
