@@ -21,6 +21,7 @@ type RedisHandler struct {
 	count       int
 	startTime   time.Time
 	config      *config.RedisConfig
+	pipeline    redis.Pipeliner
 }
 
 func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
@@ -36,6 +37,7 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 		logger.Error(REDIS_LOG_TAG, "Error while initializing redis connection ", err)
 		return nil, err
 	}
+	handler.pipeline = handler.redisClient.Pipeline()
 
 	return handler, nil
 }
@@ -86,7 +88,7 @@ func (h *RedisHandler) StartPeriodicSync() {
 func (h *RedisHandler) syncPipeline() {
 	syncDuration := time.Duration(h.config.SyncDuration) * time.Millisecond
 	if h.count > h.config.BatchSize || time.Since(h.startTime) >= syncDuration {
-		_, err := h.redisClient.Pipeline().Exec(h.ctx)
+		_, err := h.pipeline.Exec(h.ctx)
 		if err != nil {
 			logger.Error(REDIS_LOG_TAG, "Error while syncing data to redis ", err)
 			return
@@ -129,16 +131,17 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDet
 	})
 
 	ctx := context.Background()
-	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.redisClient.Pipeline().Len())
-	h.redisClient.Pipeline().HMSet(ctx, traceID, spanJsonMap)
-	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.redisClient.Pipeline().Len())
-	h.redisClient.TxPipeline().Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
+	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.pipeline.Len())
+	h.pipeline.HMSet(ctx, traceID, spanJsonMap)
+	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.pipeline.Len())
+	h.pipeline.Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
+	h.count++
 	h.syncPipeline()
 	return nil
 }
 
 func (h *RedisHandler) forceSync() {
-	_, err := h.redisClient.Pipeline().Exec(h.ctx)
+	_, err := h.pipeline.Exec(h.ctx)
 	if err != nil {
 		logger.Error(REDIS_LOG_TAG, "Error while force syncing data to redis ", err)
 		return
