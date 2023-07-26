@@ -92,7 +92,7 @@ func (h *RedisHandler) syncPipeline() {
 	}
 }
 
-func (h *RedisHandler) putTraceData(traceID string, traceDetails model.TraceDetails) error {
+func (h *RedisHandler) PutTraceData(traceID string, traceDetails model.TraceDetails) error {
 	err := h.pingRedis()
 	if err != nil {
 		//Closing redis connection.
