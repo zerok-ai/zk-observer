@@ -15,7 +15,6 @@ type RedisConfig struct {
 }
 
 type OtlpConfig struct {
-	Host  string                `yaml:"host"`
 	Port  string                `yaml:"port"`
 	Logs  logsConfig.LogsConfig `yaml:"logs"`
 	Redis RedisConfig           `yaml:"redis"`

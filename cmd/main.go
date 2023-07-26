@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	"net/http"
 )
 
 var LOG_TAG = "main"
@@ -29,13 +29,45 @@ func main() {
 
 	traceHandler := handler.NewTraceHandler(redisHandler)
 
-	http.HandleFunc("/v1/traces", traceHandler.HandleTraceRequest)
+	app := newApp()
+	irisConfig := iris.WithConfiguration(iris.Configuration{
+		DisablePathCorrection: true,
+		LogLevel:              otlpConfig.Logs.Level,
+	})
 
-	logger.Debug(LOG_TAG, "Starting Server at http://localhost:8147/")
+	app.Post("/v1/traces", traceHandler.ServeHTTP)
 
-	err = http.ListenAndServe(":8147", nil)
+	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
+
 	if err != nil {
 		logger.Error(LOG_TAG, "Error starting the server:", err)
 	}
 
+}
+
+func newApp() *iris.Application {
+	app := iris.Default()
+
+	crs := func(ctx iris.Context) {
+		ctx.Header("Access-Control-Allow-Credentials", "true")
+
+		if ctx.Method() == iris.MethodOptions {
+			ctx.Header("Access-Control-Methods", "POST")
+
+			ctx.Header("Access-Control-Allow-Headers",
+				"Access-Control-Allow-Origin,Content-Type")
+
+			ctx.Header("Access-Control-Max-Age",
+				"86400")
+
+			ctx.StatusCode(iris.StatusNoContent)
+			return
+		}
+
+		ctx.Next()
+	}
+	app.UseRouter(crs)
+	app.AllowMethods(iris.MethodOptions)
+
+	return app
 }

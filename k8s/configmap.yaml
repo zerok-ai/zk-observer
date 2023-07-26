@@ -1,7 +1,6 @@
 apiVersion: v1
 data:
   otlp-config.yaml: |+
-    host: 0.0.0.0
     port: 8147
     redis:
      host: redis-master.zk-client.svc.cluster.local

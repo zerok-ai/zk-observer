@@ -2,15 +2,14 @@ package handler
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
-	"net/http"
 	"sync"
 )
 
@@ -33,16 +32,12 @@ func NewTraceHandler(redisHandler *utils.RedisHandler) *TraceHandler {
 	return &handler
 }
 
-func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 
 	// Read the request body
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+		ctx.StatusCode(iris.StatusInternalServerError)
 		return
 	}
 
@@ -52,7 +47,7 @@ func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Reques
 	var traceData tracev1.TracesData
 	err = proto.Unmarshal(body, &traceData)
 	if err != nil {
-		http.Error(w, "Failed to unmarshal proto data", http.StatusBadRequest)
+		ctx.StatusCode(iris.StatusBadRequest)
 		return
 	}
 
@@ -64,11 +59,7 @@ func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Respond to the client
-	w.WriteHeader(http.StatusOK)
-	_, err = fmt.Fprintln(w, "Trace data received successfully!")
-	if err != nil {
-		return
-	}
+	ctx.StatusCode(iris.StatusOK)
 }
 
 func (th *TraceHandler) pushDataToRedis() error {
@@ -168,5 +159,5 @@ func (th *TraceHandler) getSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
 	case tracev1.Span_SPAN_KIND_CLIENT:
 		return model.SpanKindClient
 	}
-	return model.SpanKindClient
+	return model.SpanKindInternal
 }
