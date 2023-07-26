@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	v1 "github.com/zerok-ai/zk-otlp-receiver/proto/go.opentelemetry.io/proto/otlp/trace/v1"
+	v1 "github.com/zerok-ai/zk-otlp-receiver/proto/pb/v1"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"io"
@@ -130,8 +130,6 @@ func (th *TraceHandler) processTraceData(traceData *v1.TracesData) []*model.Span
 func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
-	spanDetail.Endpoint = ""
-	spanDetail.LocalEndpoint = model.Endpoint{}
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
 	attr := span.Attributes
 	attrMap := map[string]interface{}{}
@@ -140,11 +138,15 @@ func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	}
 	dbSystemAttrValue, ok := attrMap[DBSystemAttributeKey]
 	if ok {
-		spanDetail.Protocol = dbSystemAttrValue.(string)
+		tmp := dbSystemAttrValue.(*v1.AnyValue)
+		tmpValue := tmp.Value.(*v1.AnyValue_StringValue)
+		spanDetail.Protocol = tmpValue.StringValue
 	} else {
 		netProtocolAttrValue, ok := attrMap[NetProtocolNameAttributeKey]
 		if ok {
-			spanDetail.Protocol = netProtocolAttrValue.(string)
+			tmp := netProtocolAttrValue.(*v1.AnyValue)
+			tmpValue := tmp.Value.(*v1.AnyValue_StringValue)
+			spanDetail.Protocol = tmpValue.StringValue
 		}
 	}
 

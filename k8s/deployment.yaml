@@ -20,7 +20,7 @@ spec:
             - name: otlp-config
               mountPath: /opt
           ports:
-            - containerPort: 8989
+            - containerPort: 8147
       volumes:
         - name: otlp-config
           configMap:
