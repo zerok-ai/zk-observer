@@ -25,10 +25,9 @@ type RedisHandler struct {
 
 func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 	handler := &RedisHandler{
-		ctx:    context.Background(),
-		config: redisConfig,
-		//TODO: Verify the Timer Duration here.
-		timer:     time.NewTimer(time.Duration(redisConfig.TimerDuration) * time.Second),
+		ctx:       context.Background(),
+		config:    redisConfig,
+		timer:     time.NewTimer(time.Duration(redisConfig.TimerDuration) * time.Millisecond),
 		startTime: time.Now(),
 	}
 
@@ -77,8 +76,7 @@ func (h *RedisHandler) syncTask() {
 }
 
 func (h *RedisHandler) syncPipeline() {
-	//TODO: Verify the Sync Duration here.
-	syncDuration := time.Duration(h.config.SyncDuration) * time.Second
+	syncDuration := time.Duration(h.config.SyncDuration) * time.Millisecond
 	if h.count > h.config.BatchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.redisClient.Pipeline().Exec(h.ctx)
 		if err != nil {
@@ -125,7 +123,6 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDet
 	pipeline := h.redisClient.Pipeline()
 	ctx := context.Background()
 	pipeline.HMSet(ctx, traceID, spanJsonMap)
-	//TODO: Verify the unit of ttl here.
 	pipeline.Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
 	return nil
 }

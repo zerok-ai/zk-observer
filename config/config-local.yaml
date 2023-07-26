@@ -1,0 +1,14 @@
+host: 0.0.0.0
+port: 8147
+redis:
+  host: localhost
+  port: 6379
+  ttl: 1800 #seconds
+  batchSize: 100
+  timerDuration: 5000 #millis
+  syncDuration: 10000 #millis
+  dbs:
+    traces: 3
+logs:
+  color: true
+  level: DEBUG

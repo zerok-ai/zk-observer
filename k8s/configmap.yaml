@@ -6,10 +6,10 @@ data:
     redis:
      host: localhost
      port: 6379
-     ttl: 20 #seconds
+     ttl: 1800 #seconds
      batchSize: 100
-     timerDuration: 1 #millis
-     syncDuration: 100 #millis
+     timerDuration: 5000 #millis
+     syncDuration: 10000 #millis
      dbs:
       traces: 3
     logs:

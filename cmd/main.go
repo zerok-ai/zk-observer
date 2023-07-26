@@ -13,6 +13,12 @@ var LOG_TAG = "main"
 func main() {
 
 	otlpConfig := config.CreateConfig()
+
+	if err := utils.ProcessArgs(otlpConfig); err != nil {
+		logger.Error(LOG_TAG, "Unable to process wsp client config. Stopping wsp client.")
+		return
+	}
+
 	logger.Init(otlpConfig.Logs)
 
 	redisHandler, err := utils.NewRedisHandler(&otlpConfig.Redis)
