@@ -17,7 +17,7 @@ var REDIS_LOG_TAG = "RedisHandler"
 type RedisHandler struct {
 	redisClient *redis.Client
 	ctx         context.Context
-	timer       *time.Timer
+	ticker      *time.Timer
 	count       int
 	startTime   time.Time
 	config      *config.RedisConfig
@@ -27,7 +27,7 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 	handler := &RedisHandler{
 		ctx:       context.Background(),
 		config:    redisConfig,
-		timer:     time.NewTimer(time.Duration(redisConfig.TimerDuration) * time.Millisecond),
+		ticker:    time.NewTimer(time.Duration(redisConfig.TimerDuration) * time.Millisecond),
 		startTime: time.Now(),
 	}
 
@@ -36,8 +36,6 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 		logger.Error(REDIS_LOG_TAG, "Error while initializing redis connection ", err)
 		return nil, err
 	}
-
-	go handler.syncTask()
 
 	return handler, nil
 }
@@ -52,7 +50,9 @@ func (h *RedisHandler) initializeRedisConn() error {
 	}
 	redisClient := redis.NewClient(opt)
 
-	err := h.pingRedis()
+	//redisClient.Set(h.ctx, "Test", "Testing", 0)
+
+	err := h.pingRedis(redisClient)
 	if err != nil {
 		return err
 	}
@@ -60,18 +60,26 @@ func (h *RedisHandler) initializeRedisConn() error {
 	return nil
 }
 
-func (h *RedisHandler) pingRedis() error {
-	if err := h.redisClient.Ping(context.Background()).Err(); err != nil {
+func (h *RedisHandler) pingRedis(redisClient *redis.Client) error {
+	if redisClient == nil {
+		logger.Error(REDIS_LOG_TAG, "Redis client is nil.")
+		return fmt.Errorf("redis client is nil")
+	}
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
 		logger.Error(REDIS_LOG_TAG, "Error caught while pinging redis ", err)
 		return err
 	}
 	return nil
 }
 
-func (h *RedisHandler) syncTask() {
-	logger.Debug(REDIS_LOG_TAG, "Syncing Trace Details.")
-	for range h.timer.C {
-		h.syncPipeline()
+func (h *RedisHandler) StartPeriodicSync() {
+	//TODO: The timer is only coming once.
+	for {
+		select {
+		case tick := <-h.ticker.C:
+			fmt.Println("Tick at", tick)
+			h.syncPipeline()
+		}
 	}
 }
 
@@ -91,7 +99,7 @@ func (h *RedisHandler) syncPipeline() {
 }
 
 func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDetails) error {
-	err := h.pingRedis()
+	err := h.pingRedis(h.redisClient)
 	if err != nil {
 		//Closing redis connection.
 		err := h.redisClient.Close()
@@ -110,7 +118,7 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDet
 	spanJsonMap := make(map[string]string)
 	traceDetails.SpanDetailsMap.Range(func(spanId, value interface{}) bool {
 		spanIdStr := spanId.(string)
-		spanDetails := value.(*model.SpanDetails)
+		spanDetails := value.(model.SpanDetails)
 		spanJSON, err := json.Marshal(spanDetails)
 		if err != nil {
 			fmt.Printf("Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
@@ -120,10 +128,12 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDet
 		return true
 	})
 
-	pipeline := h.redisClient.Pipeline()
 	ctx := context.Background()
-	pipeline.HMSet(ctx, traceID, spanJsonMap)
-	pipeline.Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
+	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.redisClient.Pipeline().Len())
+	h.redisClient.Pipeline().HMSet(ctx, traceID, spanJsonMap)
+	logger.Debug(REDIS_LOG_TAG, "Len of redis pipeline ", h.redisClient.Pipeline().Len())
+	h.redisClient.TxPipeline().Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
+	h.syncPipeline()
 	return nil
 }
 

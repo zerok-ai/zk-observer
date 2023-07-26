@@ -56,6 +56,11 @@ func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	th.processTraceData(&traceData)
+	err = th.pushDataToRedis()
+	if err != nil {
+		logger.Error(TRACE_LOG_TAG, "Error while pushing data to redis ", err)
+		return
+	}
 
 	// Respond to the client
 	w.WriteHeader(http.StatusOK)
@@ -124,7 +129,7 @@ func (th *TraceHandler) processTraceData(traceData *v1.TracesData) []*model.Span
 
 func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
-	spanDetail.ParentSpanID = string(span.ParentSpanId)
+	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
 	spanDetail.Endpoint = ""
 	spanDetail.LocalEndpoint = model.Endpoint{}
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
