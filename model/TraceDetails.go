@@ -1,16 +1,11 @@
 package model
 
+import "sync"
+
 type TraceDetails struct {
-	SpanDetailsMap map[string]SpanDetails
+	SpanDetailsMap sync.Map
 }
 
 func (td *TraceDetails) SetSpanDetails(spanID string, spanDetails SpanDetails) {
-	if td.SpanDetailsMap == nil {
-		td.SpanDetailsMap = make(map[string]SpanDetails)
-	}
-	td.SpanDetailsMap[spanID] = spanDetails
-}
-
-func (td *TraceDetails) GetSpanDetails(spanID string) SpanDetails {
-	return td.SpanDetailsMap[spanID]
+	td.SpanDetailsMap.Store(spanID, spanDetails)
 }

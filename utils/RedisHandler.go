@@ -92,7 +92,7 @@ func (h *RedisHandler) syncPipeline() {
 	}
 }
 
-func (h *RedisHandler) PutTraceData(traceID string, traceDetails model.TraceDetails) error {
+func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDetails) error {
 	err := h.pingRedis()
 	if err != nil {
 		//Closing redis connection.
@@ -108,15 +108,19 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails model.TraceDeta
 			return err
 		}
 	}
+
 	spanJsonMap := make(map[string]string)
-	for spanID, spanDetails := range traceDetails.SpanDetailsMap {
+	traceDetails.SpanDetailsMap.Range(func(spanId, value interface{}) bool {
+		spanIdStr := spanId.(string)
+		spanDetails := value.(*model.SpanDetails)
 		spanJSON, err := json.Marshal(spanDetails)
 		if err != nil {
-			fmt.Printf("Error encoding SpanDetails for spanID %s: %v\n", spanID, err)
-			continue
+			fmt.Printf("Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
+			return true
 		}
-		spanJsonMap[spanID] = string(spanJSON)
-	}
+		spanJsonMap[spanIdStr] = string(spanJSON)
+		return true
+	})
 
 	pipeline := h.redisClient.Pipeline()
 	ctx := context.Background()
@@ -136,25 +140,4 @@ func (h *RedisHandler) forceSync() {
 
 func (h *RedisHandler) shutdown() {
 	h.forceSync()
-}
-
-func (h *RedisHandler) getTraceData(traceID string) (*model.TraceDetails, error) {
-	spanJSONMap, err := h.redisClient.HGetAll(h.ctx, traceID).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	spansHashMap := make(map[string]model.SpanDetails)
-	for spanID, spanJSON := range spanJSONMap {
-		var spanDetails model.SpanDetails
-		if err := json.Unmarshal([]byte(spanJSON), &spanDetails); err != nil {
-			return nil, err
-		}
-		spansHashMap[spanID] = spanDetails
-	}
-
-	traceDetails := &model.TraceDetails{
-		SpanDetailsMap: spansHashMap,
-	}
-	return traceDetails, nil
 }

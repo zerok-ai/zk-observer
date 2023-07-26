@@ -10,6 +10,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"io"
 	"net/http"
+	"sync"
 )
 
 var TRACE_LOG_TAG = "TraceHandler"
@@ -20,13 +21,13 @@ var NetProtocolNameAttributeKey = "net.protocol.name"
 var HTTPRouteAttributeKey = "http.route"
 
 type TraceHandler struct {
-	traceStore   map[string]model.TraceDetails
+	traceStore   sync.Map
 	redisHandler *utils.RedisHandler
 }
 
 func NewTraceHandler(redisHandler *utils.RedisHandler) *TraceHandler {
 	handler := TraceHandler{}
-	handler.traceStore = map[string]model.TraceDetails{}
+	handler.traceStore = sync.Map{}
 	handler.redisHandler = redisHandler
 	return &handler
 }
@@ -63,20 +64,31 @@ func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
 func (th *TraceHandler) pushDataToRedis() error {
 	var keysToDelete []string
 	var err error
-	for traceID, traceDetails := range th.traceStore {
-		err = th.redisHandler.PutTraceData(traceID, traceDetails)
+
+	th.traceStore.Range(func(traceID, value interface{}) bool {
+		traceIDStr := traceID.(string)
+		traceDetails := value.(*model.TraceDetails)
+
+		err = th.redisHandler.PutTraceData(traceIDStr, traceDetails)
 		if err != nil {
 			logger.Debug(TRACE_LOG_TAG, "Error whole putting trace data to redis ", err)
-			break
+			// Returning false to stop the iteration
+			return false
 		}
-		keysToDelete = append(keysToDelete, traceID)
-	}
+
+		keysToDelete = append(keysToDelete, traceIDStr)
+		return true
+	})
+
+	// Delete the keys from the sync.Map after the iteration
 	for _, key := range keysToDelete {
-		delete(th.traceStore, key)
+		th.traceStore.Delete(key)
 	}
+
 	return err
 }
 
@@ -92,15 +104,18 @@ func (th *TraceHandler) processTraceData(traceData *v1.TracesData) []*model.Span
 				logger.Debug(TRACE_LOG_TAG, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span)
-				traceDetails, found := th.traceStore[traceId]
 
-				if !found {
-					traceDetails = model.TraceDetails{
-						SpanDetailsMap: make(map[string]model.SpanDetails),
-					}
-				}
-				traceDetails.SpanDetailsMap[spanId] = spanDetails
-				th.traceStore[traceId] = traceDetails
+				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
+					SpanDetailsMap: sync.Map{},
+				})
+
+				traceDetails := traceDetailsPresent.(*model.TraceDetails)
+
+				//Adding the new span details to traceDetails
+				traceDetails.SetSpanDetails(spanId, spanDetails)
+
+				//Updating the traceDetails in traceStore.
+				th.traceStore.Store(traceId, traceDetails)
 			}
 		}
 	}
