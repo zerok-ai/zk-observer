@@ -1,2 +1,3 @@
 vendor/
 zk-otlp-receiver
+bin/

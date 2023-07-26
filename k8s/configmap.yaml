@@ -4,7 +4,7 @@ data:
     host: 0.0.0.0
     port: 8147
     redis:
-     host: localhost
+     host: redis-master.zk-client.svc.cluster.local
      port: 6379
      ttl: 1800 #seconds
      batchSize: 100

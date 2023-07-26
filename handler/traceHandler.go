@@ -133,17 +133,20 @@ func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	spanDetail.Endpoint = ""
 	spanDetail.LocalEndpoint = model.Endpoint{}
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
-	//attr := span.Attributes
-	//attrMap := map[string]interface{}{}
-	//for _, kv := range attr {
-	//	attrMap[kv.Key] = kv.Value
-	//}
-	//dbSystemAttrValue, ok := attrMap[DBSystemAttributeKey]
-	//if ok {
-	//	spanDetail.Protocol = dbSystemAttrValue
-	//} else {
-	//
-	//}
+	attr := span.Attributes
+	attrMap := map[string]interface{}{}
+	for _, kv := range attr {
+		attrMap[kv.Key] = kv.Value
+	}
+	dbSystemAttrValue, ok := attrMap[DBSystemAttributeKey]
+	if ok {
+		spanDetail.Protocol = dbSystemAttrValue.(string)
+	} else {
+		netProtocolAttrValue, ok := attrMap[NetProtocolNameAttributeKey]
+		if ok {
+			spanDetail.Protocol = netProtocolAttrValue.(string)
+		}
+	}
 
 	//logger.Debug(TRACE_LOG_TAG, "Attr Map ", attrMap)
 	return spanDetail
