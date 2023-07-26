@@ -12,9 +12,9 @@ var LOG_TAG = "main"
 func main() {
 
 	otlpConfig := config.CreateConfig()
-	logger.Init(otlpConfig.LogsConfig)
+	logger.Init(otlpConfig.Logs)
 
-	http.HandleFunc("/v1/traces", handler.HandleTraceRequest)
+	http.HandleFunc("/", handler.HandleTraceRequest)
 
 	logger.Debug(LOG_TAG, "Starting Server at http://localhost:8147/")
 

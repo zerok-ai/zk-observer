@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-otlp-receiver
+spec:
+  selector:
+    app: zk-otlp-receiver
+  ports:
+    - protocol: TCP
+      port: 8147
+      targetPort: 8147

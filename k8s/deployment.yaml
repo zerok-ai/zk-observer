@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zk-otlp-receiver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zk-otlp-receiver
+  template:
+    metadata:
+      labels:
+        app: zk-otlp-receiver
+    spec:
+      containers:
+        - name: zk-otlp-receiver
+          image: zk-otlp-receiver:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: otlp-config
+              mountPath: /opt
+          ports:
+            - containerPort: 8989
+      volumes:
+        - name: otlp-config
+          configMap:
+            name: zk-otlp-receiver

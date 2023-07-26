@@ -1,0 +1,20 @@
+apiVersion: v1
+data:
+  otlp-config.yaml: |+
+    host: 0.0.0.0
+    port: 8147
+    redis:
+     host: localhost
+     port: 6379
+     ttl: 20 #seconds
+     batchSize: 100
+     timerDuration: 1 #millis
+     syncDuration: 100 #millis
+     dbs:
+      traces: 3
+    logs:
+      color: true
+      level: DEBUG
+kind: ConfigMap
+metadata:
+  name: zk-otlp-receiver

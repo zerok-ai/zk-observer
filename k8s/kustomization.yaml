@@ -1,0 +1,12 @@
+# Adds namespace to all resources.
+namespace: zk-client
+resources:
+- ./deployment.yaml
+- ./service.yaml
+- ./configmap.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: zk-otlp-receiver
+  newName: us-west1-docker.pkg.dev/zerok-dev/stage/zk-otlp
+  newTag: ccfix
