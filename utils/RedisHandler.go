@@ -8,6 +8,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"time"
 )
 
@@ -17,7 +18,7 @@ var REDIS_LOG_TAG = "RedisHandler"
 type RedisHandler struct {
 	redisClient *redis.Client
 	ctx         context.Context
-	ticker      *time.Timer
+	ticker      *zktick.TickerTask
 	count       int
 	startTime   time.Time
 	config      *config.RedisConfig
@@ -28,7 +29,6 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 	handler := &RedisHandler{
 		ctx:       context.Background(),
 		config:    redisConfig,
-		ticker:    time.NewTimer(time.Duration(redisConfig.TimerDuration) * time.Millisecond),
 		startTime: time.Now(),
 	}
 
@@ -38,6 +38,10 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 		return nil, err
 	}
 	handler.pipeline = handler.redisClient.Pipeline()
+
+	timerDuration := time.Duration(redisConfig.TimerDuration) * time.Millisecond
+	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
+	handler.ticker.Start()
 
 	return handler, nil
 }
@@ -72,17 +76,6 @@ func (h *RedisHandler) pingRedis(redisClient *redis.Client) error {
 		return err
 	}
 	return nil
-}
-
-func (h *RedisHandler) StartPeriodicSync() {
-	//TODO: The timer is only coming once.
-	for {
-		select {
-		case tick := <-h.ticker.C:
-			fmt.Println("Tick at", tick)
-			h.syncPipeline()
-		}
-	}
 }
 
 func (h *RedisHandler) syncPipeline() {
@@ -123,7 +116,7 @@ func (h *RedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDet
 		spanDetails := value.(model.SpanDetails)
 		spanJSON, err := json.Marshal(spanDetails)
 		if err != nil {
-			fmt.Printf("Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
+			logger.Debug(REDIS_LOG_TAG, "Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
 			return true
 		}
 		spanJsonMap[spanIdStr] = string(spanJSON)

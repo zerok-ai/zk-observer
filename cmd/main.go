@@ -27,8 +27,6 @@ func main() {
 		return
 	}
 
-	go redisHandler.StartPeriodicSync()
-
 	traceHandler := handler.NewTraceHandler(redisHandler)
 
 	http.HandleFunc("/", traceHandler.HandleTraceRequest)

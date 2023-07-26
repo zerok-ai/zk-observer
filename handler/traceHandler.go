@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	v1 "github.com/zerok-ai/zk-otlp-receiver/proto/pb/v1"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"net/http"
 	"sync"
@@ -48,7 +49,7 @@ func (th *TraceHandler) HandleTraceRequest(w http.ResponseWriter, r *http.Reques
 	//logger.Debug(TRACE_LOG_TAG, string(body))
 
 	// Unmarshal the protobuf message from the request body
-	var traceData v1.TracesData
+	var traceData tracev1.TracesData
 	err = proto.Unmarshal(body, &traceData)
 	if err != nil {
 		http.Error(w, "Failed to unmarshal proto data", http.StatusBadRequest)
@@ -97,7 +98,7 @@ func (th *TraceHandler) pushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) processTraceData(traceData *v1.TracesData) []*model.SpanDetails {
+func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData) []*model.SpanDetails {
 	var spanDetails []*model.SpanDetails
 
 	for _, resourceSpans := range traceData.ResourceSpans {
@@ -127,7 +128,7 @@ func (th *TraceHandler) processTraceData(traceData *v1.TracesData) []*model.Span
 	return spanDetails
 }
 
-func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
@@ -138,14 +139,14 @@ func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	}
 	dbSystemAttrValue, ok := attrMap[DBSystemAttributeKey]
 	if ok {
-		tmp := dbSystemAttrValue.(*v1.AnyValue)
-		tmpValue := tmp.Value.(*v1.AnyValue_StringValue)
+		tmp := dbSystemAttrValue.(*commonv1.AnyValue)
+		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
 		spanDetail.Protocol = tmpValue.StringValue
 	} else {
 		netProtocolAttrValue, ok := attrMap[NetProtocolNameAttributeKey]
 		if ok {
-			tmp := netProtocolAttrValue.(*v1.AnyValue)
-			tmpValue := tmp.Value.(*v1.AnyValue_StringValue)
+			tmp := netProtocolAttrValue.(*commonv1.AnyValue)
+			tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
 			spanDetail.Protocol = tmpValue.StringValue
 		}
 	}
@@ -154,17 +155,17 @@ func (th *TraceHandler) createSpanDetails(span *v1.Span) model.SpanDetails {
 	return spanDetail
 }
 
-func (th *TraceHandler) getSpanKind(kind v1.Span_SpanKind) model.SpanKind {
+func (th *TraceHandler) getSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
 	switch kind {
-	case v1.Span_SPAN_KIND_INTERNAL:
+	case tracev1.Span_SPAN_KIND_INTERNAL:
 		return model.SpanKindInternal
-	case v1.Span_SPAN_KIND_SERVER:
+	case tracev1.Span_SPAN_KIND_SERVER:
 		return model.SpanKindServer
-	case v1.Span_SPAN_KIND_PRODUCER:
+	case tracev1.Span_SPAN_KIND_PRODUCER:
 		return model.SpanKindProducer
-	case v1.Span_SPAN_KIND_CONSUMER:
+	case tracev1.Span_SPAN_KIND_CONSUMER:
 		return model.SpanKindConsumer
-	case v1.Span_SPAN_KIND_CLIENT:
+	case tracev1.Span_SPAN_KIND_CLIENT:
 		return model.SpanKindClient
 	}
 	return model.SpanKindClient

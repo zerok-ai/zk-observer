@@ -7,7 +7,7 @@ data:
      host: redis-master.zk-client.svc.cluster.local
      port: 6379
      ttl: 1800 #seconds
-     batchSize: 5
+     batchSize: 30
      timerDuration: 5000 #millis
      syncDuration: 10000 #millis
      dbs:
