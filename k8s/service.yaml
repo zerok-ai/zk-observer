@@ -7,5 +7,5 @@ spec:
     app: zk-otlp-receiver
   ports:
     - protocol: TCP
-      port: 8147
+      port: 80
       targetPort: 8147
