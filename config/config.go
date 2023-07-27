@@ -15,9 +15,11 @@ type RedisConfig struct {
 }
 
 type OtlpConfig struct {
-	Port  string                `yaml:"port"`
-	Logs  logsConfig.LogsConfig `yaml:"logs"`
-	Redis RedisConfig           `yaml:"redis"`
+	Port              string                `yaml:"port"`
+	SetHttpEndpoint   bool                  `yaml:"setHttpEndpoint"`
+	SetSpanAttributes bool                  `yaml:"setSpanAttributes"`
+	Logs              logsConfig.LogsConfig `yaml:"logs"`
+	Redis             RedisConfig           `yaml:"redis"`
 }
 
 func CreateConfig() *OtlpConfig {

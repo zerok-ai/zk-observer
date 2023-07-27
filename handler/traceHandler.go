@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
+	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -19,16 +21,20 @@ var DBSystemAttributeKey = "db.system"
 var HTTPMethodAttributeKey = "http.method"
 var NetProtocolNameAttributeKey = "net.protocol.name"
 var HTTPRouteAttributeKey = "http.route"
+var NetPeerNameAttributeKey = "net.peer.name"
+var HttpUrlAttributeKey = "http.url"
 
 type TraceHandler struct {
 	traceStore   sync.Map
 	redisHandler *utils.RedisHandler
+	otlpConfig   *config.OtlpConfig
 }
 
-func NewTraceHandler(redisHandler *utils.RedisHandler) *TraceHandler {
+func NewTraceHandler(redisHandler *utils.RedisHandler, config *config.OtlpConfig) *TraceHandler {
 	handler := TraceHandler{}
 	handler.traceStore = sync.Map{}
 	handler.redisHandler = redisHandler
+	handler.otlpConfig = config
 	return &handler
 }
 
@@ -128,18 +134,26 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 	for _, kv := range attr {
 		attrMap[kv.Key] = kv.Value
 	}
-	dbSystemAttrValue, ok := attrMap[DBSystemAttributeKey]
-	if ok {
+	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
+	if th.otlpConfig.SetSpanAttributes {
+		spanDetail.Attributes = fmt.Sprintf("%v", attrMap)
+	}
+	dbSystemAttrValue, dbOk := attrMap[DBSystemAttributeKey]
+	_, httpMethodOk := attrMap[HTTPMethodAttributeKey]
+	netProtocolAttrValue, netProtocolOk := attrMap[NetProtocolNameAttributeKey]
+	if dbOk {
 		tmp := dbSystemAttrValue.(*commonv1.AnyValue)
 		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
 		spanDetail.Protocol = tmpValue.StringValue
-	} else {
-		netProtocolAttrValue, ok := attrMap[NetProtocolNameAttributeKey]
-		if ok {
-			tmp := netProtocolAttrValue.(*commonv1.AnyValue)
-			tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
-			spanDetail.Protocol = tmpValue.StringValue
+	} else if httpMethodOk {
+		spanDetail.Protocol = "http"
+		if th.otlpConfig.SetHttpEndpoint {
+			//TODO: Add code to set Http Endpoint.
 		}
+	} else if netProtocolOk {
+		tmp := netProtocolAttrValue.(*commonv1.AnyValue)
+		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
+		spanDetail.Protocol = tmpValue.StringValue
 	}
 
 	//logger.Debug(TRACE_LOG_TAG, "Attr Map ", attrMap)

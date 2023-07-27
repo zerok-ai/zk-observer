@@ -2,6 +2,8 @@ apiVersion: v1
 data:
   otlp-config.yaml: |+
     port: 8147
+    setHttpEndPoint: true
+    setSpanAttributes: true
     redis:
      host: redis-master.zk-client.svc.cluster.local
      port: 6379

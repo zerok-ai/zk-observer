@@ -27,7 +27,7 @@ func main() {
 		return
 	}
 
-	traceHandler := handler.NewTraceHandler(redisHandler)
+	traceHandler := handler.NewTraceHandler(redisHandler, otlpConfig)
 
 	app := newApp()
 	irisConfig := iris.WithConfiguration(iris.Configuration{
