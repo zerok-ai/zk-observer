@@ -12,6 +12,7 @@ import (
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -142,7 +143,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 	}
 
 	dbSystemAttrValue, dbOk := attrMap[DBSystemAttributeKey]
-	_, httpMethodOk := attrMap[HTTPMethodAttributeKey]
+	httpMethod, httpMethodOk := attrMap[HTTPMethodAttributeKey]
 	netProtocolAttrValue, netProtocolOk := attrMap[NetProtocolNameAttributeKey]
 	if dbOk {
 		tmp := dbSystemAttrValue.(*commonv1.AnyValue)
@@ -150,8 +151,36 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 		spanDetail.Protocol = tmpValue.StringValue
 	} else if httpMethodOk {
 		spanDetail.Protocol = "http"
+
+		tmp := httpMethod.(*commonv1.AnyValue)
+		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
+		httpMethodStr := tmpValue.StringValue
+
 		if th.otlpConfig.SetHttpEndpoint {
-			//TODO: Add code to set Http Endpoint.
+			httpRoute, _ := attrMap["HTTP_ROUTE"]
+			netPeerName, _ := attrMap["NET_PEER_NAME"]
+			httpURL, _ := attrMap["HTTP_URL"]
+
+			httpRouteStr := ""
+			if httpRoute == "" || httpRoute == nil {
+				if netPeerName != nil && netPeerName != "" && httpURL != nil && httpURL != "" {
+					tmp = netPeerName.(*commonv1.AnyValue)
+					tmpValue = tmp.Value.(*commonv1.AnyValue_StringValue)
+					netPeerNameStr := tmpValue.StringValue
+
+					tmp = httpURL.(*commonv1.AnyValue)
+					tmpValue = tmp.Value.(*commonv1.AnyValue_StringValue)
+					httpURLStr := tmpValue.StringValue
+
+					httpRouteStr = httpURLStr[strings.Index(httpURLStr, netPeerNameStr)+len(netPeerNameStr):]
+				} else {
+					httpRouteStr = ""
+				}
+			} else {
+				httpRouteStr = httpRoute.(string)
+			}
+
+			spanDetail.Endpoint = "[" + httpMethodStr + "]" + httpRouteStr
 		}
 	} else if netProtocolOk {
 		tmp := netProtocolAttrValue.(*commonv1.AnyValue)

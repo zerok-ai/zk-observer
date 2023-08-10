@@ -16,7 +16,7 @@ type RedisConfig struct {
 
 type OtlpConfig struct {
 	Port              string                `yaml:"port"`
-	SetHttpEndpoint   bool                  `yaml:"setHttpEndpoint"`
+	SetHttpEndpoint   bool                  `yaml:"setHttpEndPoint"`
 	SetSpanAttributes bool                  `yaml:"setSpanAttributes"`
 	Logs              logsConfig.LogsConfig `yaml:"logs"`
 	Redis             RedisConfig           `yaml:"redis"`
