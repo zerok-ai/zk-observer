@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zk-otlp-receiver
+  labels:
+  {{- include "helm-charts.labels" . | nindent 4 }}
+data:
+  otlp-config.yaml: {{ .Values.zkOtlpReceiver.otlpConfigYaml | toYaml | indent 1
+    }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helm-charts.fullname" . }}-zk-otlp-receiver
+  labels:
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.zkOtlpReceiver.type }}
+  selector:
+    app: zk-otlp-receiver
+  {{- include "helm-charts.selectorLabels" . | nindent 4 }}
+  ports:
+	{{- .Values.zkOtlpReceiver.ports | toYaml | nindent 2 -}}

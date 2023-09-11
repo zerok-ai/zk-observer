@@ -1,0 +1,29 @@
+kubernetesClusterDomain: cluster.local
+zkOtlpReceiver:
+  otlpConfigYaml: |-
+    port: 8147
+    setHttpEndPoint: true
+    setSpanAttributes: true
+    redis:
+     host: redis-master.zk-client.svc.cluster.local
+     port: 6379
+     ttl: 1800 #seconds
+     batchSize: 30
+     timerDuration: 5000 #millis
+     syncDuration: 10000 #millis
+     dbs:
+      traces: 3
+    logs:
+      color: true
+      level: DEBUG
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8147
+  replicas: 1
+  type: ClusterIP
+  zkOtlpReceiver:
+    image:
+      repository: us-west1-docker.pkg.dev/zerok-dev/stage/zk-otlp-receiver
+      tag: dev
+    imagePullPolicy: Always
