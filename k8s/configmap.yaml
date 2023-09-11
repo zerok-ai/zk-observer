@@ -12,7 +12,7 @@ data:
      timerDuration: 5000 #millis
      syncDuration: 10000 #millis
      dbs:
-      traces: 3
+      traces: 4
     logs:
       color: true
       level: DEBUG

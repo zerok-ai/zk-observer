@@ -12,6 +12,7 @@ import (
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
+	"net"
 	"strings"
 	"sync"
 )
@@ -126,6 +127,56 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData) []*model
 	return spanDetails
 }
 
+// getSourceDestIPPair extracts local and remote IP addresses from spanData and attributes.
+func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}) (string, string) {
+	destIP := ""
+	sourceIP := ""
+
+	if spanKind == model.SpanKindClient {
+		ip, err := GetLocalIPAddress()
+		if err != nil {
+			fmt.Println("Failed to get local IP address")
+		} else {
+			sourceIP = ip
+		}
+		if len(attributes) > 0 {
+			if peerAddr, ok := attributes["NET_SOCK_PEER_ADDR"]; ok {
+				destIP = peerAddr.(string)
+			} else if peerName, ok := attributes["NET_PEER_NAME"]; ok {
+				address, err := net.LookupHost(peerName.(string))
+				if err == nil && len(address) > 0 {
+					destIP = address[0]
+				}
+			}
+		}
+	} else if spanKind == model.SpanKindServer {
+		if len(attributes) > 0 {
+			if hostAddr, ok := attributes["NET_SOCK_HOST_ADDR"]; ok {
+				destIP = hostAddr.(string)
+			}
+			if peerAddr, ok := attributes["NET_SOCK_PEER_ADDR"]; ok {
+				sourceIP = peerAddr.(string)
+			}
+		}
+	}
+
+	return sourceIP, destIP
+}
+
+func GetLocalIPAddress() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String(), nil
+		}
+	}
+	return "", fmt.Errorf("No valid local IP address found")
+}
+
 func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
@@ -188,7 +239,18 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 		spanDetail.Protocol = tmpValue.StringValue
 	}
 
-	//logger.Debug(TRACE_LOG_TAG, "Attr Map ", attrMap)
+	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap)
+
+	if len(sourceIp) > 0 {
+		spanDetail.SourceIP = sourceIp
+	}
+	if len(destIp) > 0 {
+		spanDetail.DestIP = destIp
+	}
+
+	spanDetail.StartNs = span.StartTimeUnixNano
+	spanDetail.EndNs = span.EndTimeUnixNano
+
 	return spanDetail
 }
 
