@@ -185,27 +185,26 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 	attr := span.Attributes
 	attrMap := map[string]interface{}{}
 	for _, kv := range attr {
-		attrMap[kv.Key] = kv.Value
+		value := th.getAnyValue(kv.Value)
+		if value != nil {
+			attrMap[kv.Key] = value
+		}
 	}
 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
 	if th.otlpConfig.SetSpanAttributes {
-		spanDetail.Attributes = th.getKeyValueListString(attr)
+		spanDetail.Attributes = attrMap
 	}
 
 	dbSystemAttrValue, dbOk := attrMap[DBSystemAttributeKey]
 	httpMethod, httpMethodOk := attrMap[HTTPMethodAttributeKey]
 	netProtocolAttrValue, netProtocolOk := attrMap[NetProtocolNameAttributeKey]
 	if dbOk {
-		tmp := dbSystemAttrValue.(*commonv1.AnyValue)
-		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
-		spanDetail.Protocol = tmpValue.StringValue
+		tmp := dbSystemAttrValue.(string)
+		spanDetail.Protocol = tmp
 	} else if httpMethodOk {
 		spanDetail.Protocol = "http"
-
-		tmp := httpMethod.(*commonv1.AnyValue)
-		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
-		httpMethodStr := tmpValue.StringValue
+		httpMethodStr := httpMethod.(string)
 
 		if th.otlpConfig.SetHttpEndpoint {
 			httpRoute, _ := attrMap["HTTP_ROUTE"]
@@ -215,14 +214,8 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 			httpRouteStr := ""
 			if httpRoute == "" || httpRoute == nil {
 				if netPeerName != nil && netPeerName != "" && httpURL != nil && httpURL != "" {
-					tmp = netPeerName.(*commonv1.AnyValue)
-					tmpValue = tmp.Value.(*commonv1.AnyValue_StringValue)
-					netPeerNameStr := tmpValue.StringValue
-
-					tmp = httpURL.(*commonv1.AnyValue)
-					tmpValue = tmp.Value.(*commonv1.AnyValue_StringValue)
-					httpURLStr := tmpValue.StringValue
-
+					netPeerNameStr := netPeerName.(string)
+					httpURLStr := httpURL.(string)
 					httpRouteStr = httpURLStr[strings.Index(httpURLStr, netPeerNameStr)+len(netPeerNameStr):]
 				} else {
 					httpRouteStr = ""
@@ -234,9 +227,8 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 			spanDetail.Endpoint = "[" + httpMethodStr + "]" + httpRouteStr
 		}
 	} else if netProtocolOk {
-		tmp := netProtocolAttrValue.(*commonv1.AnyValue)
-		tmpValue := tmp.Value.(*commonv1.AnyValue_StringValue)
-		spanDetail.Protocol = tmpValue.StringValue
+		tmp := netProtocolAttrValue.(string)
+		spanDetail.Protocol = tmp
 	}
 
 	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap)
@@ -254,52 +246,28 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 	return spanDetail
 }
 
-func (th *TraceHandler) getKeyValueListString(kvList []*commonv1.KeyValue) string {
-	result := "{"
-	for i, keyValue := range kvList {
-		if i > 0 {
-			result = result + ", "
-		}
-		key := keyValue.Key
-		value := keyValue.Value
-		valueStr := th.getAnyValueString(value)
-		result = result + key + ":" + valueStr
-	}
-	result = result + "}"
-	return result
-}
-
-func (th *TraceHandler) getAnyValueString(value *commonv1.AnyValue) string {
-	valueStr := ""
+func (th *TraceHandler) getAnyValue(value *commonv1.AnyValue) interface{} {
 	switch v := value.Value.(type) {
 	case *commonv1.AnyValue_StringValue:
-		valueStr = v.StringValue
+		return v.StringValue
 	case *commonv1.AnyValue_ArrayValue:
-		valueStr = "["
-		for i, item := range v.ArrayValue.Values {
-			if i > 0 {
-				valueStr = valueStr + ","
-			}
-			valueStr = valueStr + th.getAnyValueString(item)
+		var arr []interface{}
+		for _, item := range v.ArrayValue.Values {
+			arr = append(arr, th.getAnyValue(item))
 		}
-		valueStr = "]"
+		return arr
 	case *commonv1.AnyValue_BoolValue:
-		valueStr = "false"
-		if v.BoolValue {
-			valueStr = "true"
-		}
+		return v.BoolValue
 	case *commonv1.AnyValue_DoubleValue:
-		valueStr = fmt.Sprintf("%v", v.DoubleValue)
+		return v.DoubleValue
 	case *commonv1.AnyValue_BytesValue:
-		valueStr = fmt.Sprintf("%v", v.BytesValue)
+		return v.BytesValue
 	case *commonv1.AnyValue_IntValue:
-		valueStr = fmt.Sprintf("%v", v.IntValue)
-	case *commonv1.AnyValue_KvlistValue:
-		valueStr = th.getKeyValueListString(v.KvlistValue.Values)
+		return v.IntValue
 	default:
 		fmt.Println("Variable has an unknown type.")
 	}
-	return valueStr
+	return nil
 }
 
 func (th *TraceHandler) getSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {

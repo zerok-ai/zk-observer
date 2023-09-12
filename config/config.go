@@ -5,9 +5,10 @@ import (
 )
 
 type RedisConfig struct {
-	Host          string         `yaml:"host" env:"REDIS_HOST" env-description:"Database host"`
-	Port          string         `yaml:"port" env:"REDIS_PORT" env-description:"Database port"`
-	DBs           map[string]int `yaml:"dbs" env:"REDIS_DB" env-description:"Database to load"`
+	Host          string         `yaml:"host" env:"ZK_REDIS_HOST" env-description:"Database host"`
+	Password      string         `yaml:"password" env:"ZK_REDIS_PASSWORD" env-description:"Database password"`
+	Port          string         `yaml:"port" env-description:"Database port"`
+	DBs           map[string]int `yaml:"dbs" env-description:"Database to load"`
 	Ttl           int            `yaml:"ttl"`
 	SyncDuration  int            `yaml:"syncDuration"`
 	TimerDuration int            `yaml:"timerDuration"`

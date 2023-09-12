@@ -6,9 +6,8 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/kataras/iris/v12 v12.2.0
 	github.com/redis/go-redis/v9 v9.0.5
-	github.com/zerok-ai/zk-utils-go v0.4.7-0.20230615082425-417005f1d590
+	github.com/zerok-ai/zk-utils-go v0.4.13
 	go.opentelemetry.io/proto/otlp v1.0.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -28,7 +27,9 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
+	github.com/ilyakaznacheev/cleanenv v1.4.2 // indirect
 	github.com/iris-contrib/schema v0.0.6 // indirect
+	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/blocks v0.0.7 // indirect
 	github.com/kataras/golog v0.1.8 // indirect
@@ -55,4 +56,6 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

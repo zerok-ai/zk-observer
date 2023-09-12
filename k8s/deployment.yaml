@@ -21,6 +21,17 @@ spec:
               mountPath: /opt
           ports:
             - containerPort: 8147
+          env:
+            - name: "ZK_REDIS_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: "redis"
+                  key: "redis-password"
+            - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
+              valueFrom:
+                configMapKeyRef:
+                  name: "zk-redis-config"
+                  key: "redisHost"
       volumes:
         - name: otlp-config
           configMap:

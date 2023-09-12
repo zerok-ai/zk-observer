@@ -5,6 +5,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 )
 
@@ -14,7 +15,7 @@ func main() {
 
 	otlpConfig := config.CreateConfig()
 
-	if err := utils.ProcessArgs(otlpConfig); err != nil {
+	if err := zkconfig.ProcessArgs(otlpConfig); err != nil {
 		logger.Error(LOG_TAG, "Unable to process wsp client config. Stopping wsp client.")
 		return
 	}

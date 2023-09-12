@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var redisHandlerTag = "RedisHandler"
+
 var dbName = "traces"
 var REDIS_LOG_TAG = "RedisHandler"
 
@@ -49,10 +51,12 @@ func NewRedisHandler(redisConfig *config.RedisConfig) (*RedisHandler, error) {
 func (h *RedisHandler) initializeRedisConn() error {
 	db := h.config.DBs[dbName]
 	redisAddr := h.config.Host + ":" + h.config.Port
-
+	logger.Debug(redisHandlerTag, "Redis Address ", redisAddr)
+	logger.Debug(redisHandlerTag, "Redis Password ", h.config.Password)
 	opt := &redis.Options{
-		Addr: redisAddr,
-		DB:   db,
+		Addr:     redisAddr,
+		Password: h.config.Password,
+		DB:       db,
 	}
 	redisClient := redis.NewClient(opt)
 

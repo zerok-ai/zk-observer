@@ -20,6 +20,16 @@ spec:
       - env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
+        - name: "ZK_REDIS_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: "redis"
+              key: "redis-password"
+        - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
+          valueFrom:
+            configMapKeyRef:
+              name: "zk-redis-config"
+              key: "redisHost"
         image: {{ .Values.zkOtlpReceiver.zkOtlpReceiver.image.repository }}:{{ .Values.zkOtlpReceiver.zkOtlpReceiver.image.tag
           | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.zkOtlpReceiver.zkOtlpReceiver.imagePullPolicy }}
