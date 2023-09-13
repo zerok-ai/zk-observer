@@ -13,18 +13,10 @@ import (
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"net"
-	"strings"
 	"sync"
 )
 
 var TRACE_LOG_TAG = "TraceHandler"
-
-var DBSystemAttributeKey = "db.system"
-var HTTPMethodAttributeKey = "http.method"
-var NetProtocolNameAttributeKey = "net.protocol.name"
-var HTTPRouteAttributeKey = "http.route"
-var NetPeerNameAttributeKey = "net.peer.name"
-var HttpUrlAttributeKey = "http.url"
 
 type TraceHandler struct {
 	traceStore   sync.Map
@@ -140,9 +132,9 @@ func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes 
 			sourceIP = ip
 		}
 		if len(attributes) > 0 {
-			if peerAddr, ok := attributes["NET_SOCK_PEER_ADDR"]; ok {
+			if peerAddr, ok := attributes["net.sock.peer.addr"]; ok {
 				destIP = peerAddr.(string)
-			} else if peerName, ok := attributes["NET_PEER_NAME"]; ok {
+			} else if peerName, ok := attributes["net.peer.name"]; ok {
 				address, err := net.LookupHost(peerName.(string))
 				if err == nil && len(address) > 0 {
 					destIP = address[0]
@@ -151,10 +143,10 @@ func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes 
 		}
 	} else if spanKind == model.SpanKindServer {
 		if len(attributes) > 0 {
-			if hostAddr, ok := attributes["NET_SOCK_HOST_ADDR"]; ok {
+			if hostAddr, ok := attributes["net.sock.host.addr"]; ok {
 				destIP = hostAddr.(string)
 			}
-			if peerAddr, ok := attributes["NET_SOCK_PEER_ADDR"]; ok {
+			if peerAddr, ok := attributes["net.sock.peer.addr"]; ok {
 				sourceIP = peerAddr.(string)
 			}
 		}
@@ -194,41 +186,6 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
 	if th.otlpConfig.SetSpanAttributes {
 		spanDetail.Attributes = attrMap
-	}
-
-	dbSystemAttrValue, dbOk := attrMap[DBSystemAttributeKey]
-	httpMethod, httpMethodOk := attrMap[HTTPMethodAttributeKey]
-	netProtocolAttrValue, netProtocolOk := attrMap[NetProtocolNameAttributeKey]
-	if dbOk {
-		tmp := dbSystemAttrValue.(string)
-		spanDetail.Protocol = tmp
-	} else if httpMethodOk {
-		spanDetail.Protocol = "http"
-		httpMethodStr := httpMethod.(string)
-
-		if th.otlpConfig.SetHttpEndpoint {
-			httpRoute, _ := attrMap["HTTP_ROUTE"]
-			netPeerName, _ := attrMap["NET_PEER_NAME"]
-			httpURL, _ := attrMap["HTTP_URL"]
-
-			httpRouteStr := ""
-			if httpRoute == "" || httpRoute == nil {
-				if netPeerName != nil && netPeerName != "" && httpURL != nil && httpURL != "" {
-					netPeerNameStr := netPeerName.(string)
-					httpURLStr := httpURL.(string)
-					httpRouteStr = httpURLStr[strings.Index(httpURLStr, netPeerNameStr)+len(netPeerNameStr):]
-				} else {
-					httpRouteStr = ""
-				}
-			} else {
-				httpRouteStr = httpRoute.(string)
-			}
-
-			spanDetail.Endpoint = "[" + httpMethodStr + "]" + httpRouteStr
-		}
-	} else if netProtocolOk {
-		tmp := netProtocolAttrValue.(string)
-		spanDetail.Protocol = tmp
 	}
 
 	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap)
