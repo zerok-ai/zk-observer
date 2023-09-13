@@ -165,6 +165,9 @@ func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes 
 func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
+	if len(spanDetail.ParentSpanID) == 0 {
+		spanDetail.ParentSpanID = "0000000000000000"
+	}
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
 
 	attr := span.Attributes
