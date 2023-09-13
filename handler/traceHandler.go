@@ -13,10 +13,14 @@ import (
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"net"
+	"net/http"
 	"sync"
 )
 
 var TRACE_LOG_TAG = "TraceHandler"
+var NET_SOCK_HOST_ADDR = "net.sock.host.addr"
+var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
+var NET_PEER_NAME = "net.peer.name"
 
 type TraceHandler struct {
 	traceStore   sync.Map
@@ -51,7 +55,7 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 		return
 	}
 
-	th.processTraceData(&traceData)
+	th.processTraceData(&traceData, ctx)
 	err = th.pushDataToRedis()
 	if err != nil {
 		logger.Error(TRACE_LOG_TAG, "Error while pushing data to redis ", err)
@@ -89,7 +93,7 @@ func (th *TraceHandler) pushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData) []*model.SpanDetails {
+func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris.Context) []*model.SpanDetails {
 	var spanDetails []*model.SpanDetails
 
 	for _, resourceSpans := range traceData.ResourceSpans {
@@ -100,7 +104,7 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData) []*model
 				logger.Debug(TRACE_LOG_TAG, "spanKind", span.Kind)
 				logger.Debug(TRACE_LOG_TAG, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
-				spanDetails := th.createSpanDetails(span)
+				spanDetails := th.createSpanDetails(span, ctx)
 
 				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
 					SpanDetailsMap: sync.Map{},
@@ -119,22 +123,25 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData) []*model
 	return spanDetails
 }
 
-// getSourceDestIPPair extracts local and remote IP addresses from spanData and attributes.
-func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}) (string, string) {
+func getClientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return ""
+	}
+	return host
+}
+
+func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, ctx iris.Context) (string, string) {
 	destIP := ""
 	sourceIP := ""
 
 	if spanKind == model.SpanKindClient {
-		ip, err := GetLocalIPAddress()
-		if err != nil {
-			fmt.Println("Failed to get local IP address")
-		} else {
-			sourceIP = ip
-		}
 		if len(attributes) > 0 {
-			if peerAddr, ok := attributes["net.sock.peer.addr"]; ok {
+			sourceIP = getClientIP(ctx.Request())
+			logger.Debug(TRACE_LOG_TAG, "Source Ip for client span  is ", sourceIP)
+			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
 				destIP = peerAddr.(string)
-			} else if peerName, ok := attributes["net.peer.name"]; ok {
+			} else if peerName, ok := attributes[NET_PEER_NAME]; ok {
 				address, err := net.LookupHost(peerName.(string))
 				if err == nil && len(address) > 0 {
 					destIP = address[0]
@@ -143,10 +150,10 @@ func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes 
 		}
 	} else if spanKind == model.SpanKindServer {
 		if len(attributes) > 0 {
-			if hostAddr, ok := attributes["net.sock.host.addr"]; ok {
+			if hostAddr, ok := attributes[NET_SOCK_HOST_ADDR]; ok {
 				destIP = hostAddr.(string)
 			}
-			if peerAddr, ok := attributes["net.sock.peer.addr"]; ok {
+			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
 				sourceIP = peerAddr.(string)
 			}
 		}
@@ -155,21 +162,7 @@ func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes 
 	return sourceIP, destIP
 }
 
-func GetLocalIPAddress() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			return ipnet.IP.String(), nil
-		}
-	}
-	return "", fmt.Errorf("No valid local IP address found")
-}
-
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
@@ -188,7 +181,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) model.SpanDetails 
 		spanDetail.Attributes = attrMap
 	}
 
-	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap)
+	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap, ctx)
 
 	if len(sourceIp) > 0 {
 		spanDetail.SourceIP = sourceIp
