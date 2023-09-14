@@ -180,6 +180,9 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	}
 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
+	if len(span.Events) > 0 {
+		logger.Debug(TRACE_LOG_TAG, "Events ", span.Events)
+	}
 	if th.otlpConfig.SetSpanAttributes {
 		spanDetail.Attributes = attrMap
 	}
@@ -217,6 +220,7 @@ func (th *TraceHandler) getAnyValue(value *commonv1.AnyValue) interface{} {
 		return v.BytesValue
 	case *commonv1.AnyValue_IntValue:
 		return v.IntValue
+	//TODO: Support KVList here.
 	default:
 		fmt.Println("Variable has an unknown type.")
 	}
