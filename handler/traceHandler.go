@@ -97,6 +97,10 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	var spanDetails []*model.SpanDetails
 
 	for _, resourceSpans := range traceData.ResourceSpans {
+		attrMap := map[string]interface{}{}
+		if resourceSpans.Resource != nil {
+			attrMap = th.convertKVListToMap(resourceSpans.Resource.Attributes)
+		}
 		for _, scopeSpans := range resourceSpans.ScopeSpans {
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
@@ -105,6 +109,8 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 				logger.Debug(TRACE_LOG_TAG, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, ctx)
+
+				spanDetails.ResourceAttr = attrMap
 
 				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
 					SpanDetailsMap: sync.Map{},
@@ -170,19 +176,13 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	}
 	spanDetail.SpanKind = th.getSpanKind(span.Kind)
 
-	attr := span.Attributes
-	attrMap := map[string]interface{}{}
-	for _, kv := range attr {
-		value := th.getAnyValue(kv.Value)
-		if value != nil {
-			attrMap[kv.Key] = value
-		}
-	}
+	attrMap := th.convertKVListToMap(span.Attributes)
 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
 		logger.Debug(TRACE_LOG_TAG, "Events ", span.Events)
 	}
+
 	if th.otlpConfig.SetSpanAttributes {
 		spanDetail.Attributes = attrMap
 	}
@@ -200,6 +200,17 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	spanDetail.EndNs = span.EndTimeUnixNano
 
 	return spanDetail
+}
+
+func (th *TraceHandler) convertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
+	attrMap := map[string]interface{}{}
+	for _, kv := range attr {
+		value := th.getAnyValue(kv.Value)
+		if value != nil {
+			attrMap[kv.Key] = value
+		}
+	}
+	return attrMap
 }
 
 func (th *TraceHandler) getAnyValue(value *commonv1.AnyValue) interface{} {
