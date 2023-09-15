@@ -1,0 +1,32 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: opentelemetry
+spec:
+  mode: daemonset
+  hostNetwork: true
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          http:
+    processors:  
+      probabilistic_sampler:
+          sampling_percentage: 50
+    exporters:
+      otlphttp: 
+        endpoint: http://zk-otlp-receiver.zk-client.svc.cluster.local:80
+        compression: "none"
+      otlphttp/zerok: 
+        endpoint: http://zk-otlp-receiver1.zk-client.svc.cluster.local:80
+        compression: "none"
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [probabilistic_sampler]
+          exporters: [otlphttp]
+        traces/zerok:
+          receivers: [otlp]
+          processors: []
+          exporters: [otlphttp/zerok]
