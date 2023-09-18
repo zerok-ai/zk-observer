@@ -180,7 +180,23 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
-		logger.Debug(TRACE_LOG_TAG, "Events ", span.Events)
+		for _, event := range span.Events {
+			if event.Name == "exception" {
+				exceptionAttr := event.Attributes
+				logger.Debug(TRACE_LOG_TAG, "Exception attributes ", exceptionAttr)
+				exception := model.ExceptionDetails{}
+				for _, attr := range exceptionAttr {
+					switch attr.Key {
+					case "exception.stacktrace":
+						exception.Stacktrace = attr.Value.GetStringValue()
+					case "exception.message":
+						exception.Message = attr.Value.GetStringValue()
+					case "exception.type":
+						exception.Type = attr.Value.GetStringValue()
+					}
+				}
+			}
+		}
 	}
 
 	if th.otlpConfig.SetSpanAttributes {
@@ -231,7 +247,6 @@ func (th *TraceHandler) getAnyValue(value *commonv1.AnyValue) interface{} {
 		return v.BytesValue
 	case *commonv1.AnyValue_IntValue:
 		return v.IntValue
-	//TODO: Support KVList here.
 	default:
 		fmt.Println("Variable has an unknown type.")
 	}
