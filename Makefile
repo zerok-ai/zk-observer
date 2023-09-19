@@ -33,3 +33,7 @@ buildAndPush: build
 install: kustomize
 	cd k8s && $(KUSTOMIZE) edit set image zk-otlp-receiver=${IMG_VER}
 	kubectl apply -k k8s
+
+.PHONY: uninstall
+uninstall: kustomize
+	kubectl delete -k k8s
