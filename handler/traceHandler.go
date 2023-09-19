@@ -161,7 +161,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 					Type:    exceptionDetails.Type,
 					Message: exceptionDetails.Message,
 				}
-				spanDetail.Exception = spanExceptionDetails
+				spanDetail.Exception = &spanExceptionDetails
 			}
 		}
 	}
