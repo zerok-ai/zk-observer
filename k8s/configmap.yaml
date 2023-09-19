@@ -12,6 +12,7 @@ data:
      syncDuration: 10000 #millis
      dbs:
       traces: 3
+      exception: 8
     logs:
       color: true
       level: DEBUG

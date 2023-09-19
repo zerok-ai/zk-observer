@@ -8,6 +8,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	zkcommon "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -23,17 +24,31 @@ var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
 var NET_PEER_NAME = "net.peer.name"
 
 type TraceHandler struct {
-	traceStore   sync.Map
-	redisHandler *utils.RedisHandler
-	otlpConfig   *config.OtlpConfig
+	traceStore            sync.Map
+	traceRedisHandler     *utils.TraceRedisHandler
+	exceptionRedisHandler *utils.RedisHandler
+	otlpConfig            *config.OtlpConfig
 }
 
-func NewTraceHandler(redisHandler *utils.RedisHandler, config *config.OtlpConfig) *TraceHandler {
+func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler := TraceHandler{}
+	traceRedisHandler, err := utils.NewTracesRedisHandler(&config.Redis)
+	if err != nil {
+		logger.Error(TRACE_LOG_TAG, "Error while creating redis handler:", err)
+		return nil, err
+	}
+
+	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, "exception")
+	if err != nil {
+		logger.Error(TRACE_LOG_TAG, "Error while creating exception redis handler:", err)
+		return nil, err
+	}
+
+	handler.exceptionRedisHandler = exceptionRedisHandler
 	handler.traceStore = sync.Map{}
-	handler.redisHandler = redisHandler
+	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
-	return &handler
+	return &handler, nil
 }
 
 func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
@@ -74,7 +89,7 @@ func (th *TraceHandler) pushDataToRedis() error {
 		traceIDStr := traceID.(string)
 		traceDetails := value.(*model.TraceDetails)
 
-		err = th.redisHandler.PutTraceData(traceIDStr, traceDetails)
+		err = th.traceRedisHandler.PutTraceData(traceIDStr, traceDetails)
 		if err != nil {
 			logger.Debug(TRACE_LOG_TAG, "Error whole putting trace data to redis ", err)
 			// Returning false to stop the iteration
@@ -195,6 +210,16 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 						exception.Type = attr.Value.GetStringValue()
 					}
 				}
+				if len(exception.Stacktrace) > 0 {
+					hash := zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
+					err := th.exceptionRedisHandler.SetValue(hash, exception)
+					if err != nil {
+						logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", span.SpanId, " with error ", err)
+					}
+				} else {
+					logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", span.SpanId)
+				}
+
 			}
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 )
@@ -22,13 +21,12 @@ func main() {
 
 	logger.Init(otlpConfig.Logs)
 
-	redisHandler, err := utils.NewRedisHandler(&otlpConfig.Redis)
+	traceHandler, err := handler.NewTraceHandler(otlpConfig)
+
 	if err != nil {
-		logger.Error(LOG_TAG, "Error while creating redis handler:", err)
+		logger.Error(LOG_TAG, "Error while creating traceHandler:", err)
 		return
 	}
-
-	traceHandler := handler.NewTraceHandler(redisHandler, otlpConfig)
 
 	app := newApp()
 	irisConfig := iris.WithConfiguration(iris.Configuration{
