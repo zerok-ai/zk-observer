@@ -8,14 +8,14 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 )
 
-var LOG_TAG = "main"
+var mainLogTag = "main"
 
 func main() {
 
 	otlpConfig := config.CreateConfig()
 
 	if err := zkconfig.ProcessArgs(otlpConfig); err != nil {
-		logger.Error(LOG_TAG, "Unable to process wsp client config. Stopping wsp client.")
+		logger.Error(mainLogTag, "Unable to process wsp client config. Stopping wsp client.")
 		return
 	}
 
@@ -24,7 +24,7 @@ func main() {
 	traceHandler, err := handler.NewTraceHandler(otlpConfig)
 
 	if err != nil {
-		logger.Error(LOG_TAG, "Error while creating traceHandler:", err)
+		logger.Error(mainLogTag, "Error while creating traceHandler:", err)
 		return
 	}
 
@@ -39,7 +39,7 @@ func main() {
 	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
 
 	if err != nil {
-		logger.Error(LOG_TAG, "Error starting the server:", err)
+		logger.Error(mainLogTag, "Error starting the server:", err)
 	}
 
 }

@@ -13,6 +13,7 @@ import (
 )
 
 var dbName = "exception"
+var exceptionLogTag = "ExceptionHandler"
 
 type ExceptionHandler struct {
 	redisHandler          *utils.RedisHandler
@@ -24,7 +25,7 @@ func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionHandler, error) {
 	handler := ExceptionHandler{}
 	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, dbName)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating exception redis handler:", err)
+		logger.Error(exceptionLogTag, "Error while creating exception redis handler:", err)
 		return nil, err
 	}
 
@@ -42,18 +43,18 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 		if !ok {
 			exceptionJSON, err := json.Marshal(exception)
 			if err != nil {
-				logger.Error(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
+				logger.Error(exceptionLogTag, "Error encoding exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
 			err = th.redisHandler.SetNX(hash, exceptionJSON)
 			if err != nil {
-				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
+				logger.Error(exceptionLogTag, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
 				return "", err
 			}
 			th.existingExceptionData.Store(hash, true)
 		}
 	} else {
-		logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", spanId)
+		logger.Error(exceptionLogTag, "Could not find stacktrace for exception for span Id ", spanId)
 		return "", fmt.Errorf("no stacktrace for the expcetion")
 	}
 	return hash, nil
@@ -61,7 +62,7 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 
 func CreateExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
 	exceptionAttr := event.Attributes
-	logger.Debug(TRACE_LOG_TAG, "Exception attributes ", exceptionAttr)
+	logger.Debug(exceptionLogTag, "Exception attributes ", exceptionAttr)
 	exception := model.ExceptionDetails{}
 	for _, attr := range exceptionAttr {
 		switch attr.Key {

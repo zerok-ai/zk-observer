@@ -8,9 +8,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 )
 
-var redisHandlerTag = "RedisHandler"
-
-var REDIS_LOG_TAG = "RedisHandler"
+var redisHandlerLogTag = "RedisHandler"
 
 type RedisHandler struct {
 	redisClient *redis.Client
@@ -28,7 +26,7 @@ func NewRedisHandler(redisConfig *config.RedisConfig, dbName string) (*RedisHand
 
 	err := handler.InitializeRedisConn()
 	if err != nil {
-		logger.Error(REDIS_LOG_TAG, "Error while initializing redis connection ", err)
+		logger.Error(redisHandlerLogTag, "Error while initializing redis connection ", err)
 		return nil, err
 	}
 
@@ -66,11 +64,11 @@ func (h *RedisHandler) SetNX(key string, value interface{}) error {
 func (h *RedisHandler) PingRedis() error {
 	redisClient := h.redisClient
 	if redisClient == nil {
-		logger.Error(REDIS_LOG_TAG, "Redis client is nil.")
+		logger.Error(redisHandlerLogTag, "Redis client is nil.")
 		return fmt.Errorf("redis client is nil")
 	}
 	if err := redisClient.Ping(context.Background()).Err(); err != nil {
-		logger.Error(REDIS_LOG_TAG, "Error caught while pinging redis ", err)
+		logger.Error(redisHandlerLogTag, "Error caught while pinging redis ", err)
 		return err
 	}
 	return nil
@@ -82,12 +80,12 @@ func (h *RedisHandler) CheckRedisConnection() error {
 		//Closing redis connection.
 		err := h.CloseConnection()
 		if err != nil {
-			logger.Error(TRACES_REDIS_LOG_TAG, "Failed to close Redis connection: ", err)
+			logger.Error(redisHandlerLogTag, "Failed to close Redis connection: ", err)
 			return err
 		}
 		err = h.InitializeRedisConn()
 		if err != nil {
-			logger.Error(TRACES_REDIS_LOG_TAG, "Error while initializing redis connection ", err)
+			logger.Error(redisHandlerLogTag, "Error while initializing redis connection ", err)
 			return err
 		}
 	}

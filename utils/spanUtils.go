@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-var UTILS_LOG_TAG = "utils"
+var spanUtilsLogTag = "spanUtils"
 var NET_SOCK_HOST_ADDR = "net.sock.host.addr"
 var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
 var NET_PEER_NAME = "net.peer.name"
@@ -31,7 +31,7 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 	if spanKind == model.SpanKindClient {
 		if len(attributes) > 0 {
 			sourceIP = GetClientIP(ctx.Request())
-			logger.Debug(UTILS_LOG_TAG, "Source Ip for client span  is ", sourceIP)
+			logger.Debug(spanUtilsLogTag, "Source Ip for client span  is ", sourceIP)
 			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
 				destIP = peerAddr.(string)
 			} else if peerName, ok := attributes[NET_PEER_NAME]; ok {

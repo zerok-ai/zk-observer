@@ -23,7 +23,7 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandl
 	handler := ResourceDetailsHandler{}
 	redisHandler, err := utils.NewRedisHandler(&config.Redis, resourceDbName)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating resource redis handler:", err)
+		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err
 	}
 

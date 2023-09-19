@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-var TRACE_LOG_TAG = "TraceHandler"
+var traceLogTag = "TraceHandler"
 
 type TraceHandler struct {
 	traceStore             sync.Map
@@ -27,19 +27,19 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := utils.NewTracesRedisHandler(&config.Redis)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating redis handler:", err)
+		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
 	}
 
 	exceptionHandler, err := NewExceptionHandler(config)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating exception handler:", err)
+		logger.Error(traceLogTag, "Error while creating exception handler:", err)
 		return nil, err
 	}
 
 	resourceHandler, err := NewResourceDetailsHandler(config)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating resource details handler:", err)
+		logger.Error(traceLogTag, "Error while creating resource details handler:", err)
 		return nil, err
 	}
 
@@ -60,7 +60,7 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 		return
 	}
 
-	//logger.Debug(TRACE_LOG_TAG, string(body))
+	//logger.Debug(traceLogTag, string(body))
 
 	// Unmarshal the protobuf message from the request body
 	var traceData tracev1.TracesData
@@ -73,7 +73,7 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 	th.processTraceData(&traceData, ctx)
 	err = th.pushDataToRedis()
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while pushing data to redis ", err)
+		logger.Error(traceLogTag, "Error while pushing data to redis ", err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (th *TraceHandler) pushDataToRedis() error {
 
 		err = th.traceRedisHandler.PutTraceData(traceIDStr, traceDetails)
 		if err != nil {
-			logger.Debug(TRACE_LOG_TAG, "Error whole putting trace data to redis ", err)
+			logger.Debug(traceLogTag, "Error whole putting trace data to redis ", err)
 			// Returning false to stop the iteration
 			return false
 		}
@@ -120,8 +120,8 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
-				logger.Debug(TRACE_LOG_TAG, "spanKind", span.Kind)
-				logger.Debug(TRACE_LOG_TAG, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
+				logger.Debug(traceLogTag, "spanKind", span.Kind)
+				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, ctx)
 
@@ -139,7 +139,7 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 
 				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
 				if err != nil {
-					logger.Error(TRACE_LOG_TAG, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 					return nil
 				}
 			}
@@ -158,7 +158,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 
 	attrMap := utils.ConvertKVListToMap(span.Attributes)
 
-	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
+	logger.Debug(traceLogTag, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {
@@ -166,7 +166,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 				spanIdStr := hex.EncodeToString(span.SpanId)
 				hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 				if err != nil {
-					logger.Error(TRACE_LOG_TAG, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
+					logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
 				spanExceptionDetails := model.SpanDetailsException{
 					Hash:    hash,

@@ -12,7 +12,7 @@ import (
 )
 
 var traceDbName = "traces"
-var TRACES_REDIS_LOG_TAG = "TraceRedisHandler"
+var traceRedisHandlerLogTag = "TraceRedisHandler"
 
 type TraceRedisHandler struct {
 	redisHandler *RedisHandler
@@ -28,7 +28,7 @@ func NewTracesRedisHandler(redisConfig *config.RedisConfig) (*TraceRedisHandler,
 	redisHandler, err := NewRedisHandler(redisConfig, traceDbName)
 
 	if err != nil {
-		logger.Error(TRACES_REDIS_LOG_TAG, "Error while creating redis client ", err)
+		logger.Error(traceRedisHandlerLogTag, "Error while creating redis client ", err)
 	}
 
 	handler := &TraceRedisHandler{
@@ -52,10 +52,10 @@ func (h *TraceRedisHandler) syncPipeline() {
 	if h.count > h.config.BatchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.pipeline.Exec(h.ctx)
 		if err != nil {
-			logger.Error(TRACES_REDIS_LOG_TAG, "Error while syncing data to redis ", err)
+			logger.Error(traceRedisHandlerLogTag, "Error while syncing data to redis ", err)
 			return
 		}
-		logger.Debug(TRACES_REDIS_LOG_TAG, "Pipeline synchronized on batchsize/syncDuration")
+		logger.Debug(traceRedisHandlerLogTag, "Pipeline synchronized on batchsize/syncDuration")
 
 		h.count = 0
 		h.startTime = time.Now()
@@ -65,7 +65,7 @@ func (h *TraceRedisHandler) syncPipeline() {
 func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDetails) error {
 	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {
-		logger.Error(TRACES_REDIS_LOG_TAG, "Error while checking redis conn ", err)
+		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
 	}
 	spanJsonMap := make(map[string]string)
 	traceDetails.SpanDetailsMap.Range(func(spanId, value interface{}) bool {
@@ -73,7 +73,7 @@ func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.Tra
 		spanDetails := value.(model.SpanDetails)
 		spanJSON, err := json.Marshal(spanDetails)
 		if err != nil {
-			logger.Debug(TRACES_REDIS_LOG_TAG, "Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
+			logger.Debug(traceRedisHandlerLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
 			return true
 		}
 		spanJsonMap[spanIdStr] = string(spanJSON)
@@ -81,9 +81,9 @@ func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.Tra
 	})
 
 	ctx := context.Background()
-	logger.Debug(TRACES_REDIS_LOG_TAG, "Len of redis pipeline ", h.pipeline.Len())
+	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
 	h.pipeline.HMSet(ctx, traceID, spanJsonMap)
-	logger.Debug(TRACES_REDIS_LOG_TAG, "Len of redis pipeline ", h.pipeline.Len())
+	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
 	h.pipeline.Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
 	h.count++
 	h.syncPipeline()
@@ -93,7 +93,7 @@ func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.Tra
 func (h *TraceRedisHandler) forceSync() {
 	_, err := h.pipeline.Exec(h.ctx)
 	if err != nil {
-		logger.Error(TRACES_REDIS_LOG_TAG, "Error while force syncing data to redis ", err)
+		logger.Error(traceRedisHandlerLogTag, "Error while force syncing data to redis ", err)
 		return
 	}
 }
@@ -102,7 +102,7 @@ func (h *TraceRedisHandler) shutdown() {
 	h.forceSync()
 	err := h.redisHandler.CloseConnection()
 	if err != nil {
-		logger.Error(TRACES_REDIS_LOG_TAG, "Error while closing redis conn.")
+		logger.Error(traceRedisHandlerLogTag, "Error while closing redis conn.")
 		return
 	}
 }
