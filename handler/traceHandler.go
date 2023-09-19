@@ -24,8 +24,10 @@ var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
 var NET_PEER_NAME = "net.peer.name"
 
 type TraceHandler struct {
-	traceStore            sync.Map
-	traceRedisHandler     *utils.TraceRedisHandler
+	traceStore        sync.Map
+	traceRedisHandler *utils.TraceRedisHandler
+	//TODO: Should we also write a ticker to sync the data from redis?
+	exceptionData         map[string]interface{}
 	exceptionRedisHandler *utils.RedisHandler
 	otlpConfig            *config.OtlpConfig
 }
@@ -197,29 +199,12 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {
-				exceptionAttr := event.Attributes
-				logger.Debug(TRACE_LOG_TAG, "Exception attributes ", exceptionAttr)
-				exception := model.ExceptionDetails{}
-				for _, attr := range exceptionAttr {
-					switch attr.Key {
-					case "exception.stacktrace":
-						exception.Stacktrace = attr.Value.GetStringValue()
-					case "exception.message":
-						exception.Message = attr.Value.GetStringValue()
-					case "exception.type":
-						exception.Type = attr.Value.GetStringValue()
-					}
+				exceptionDetails := th.createExceptionDetails(event)
+				spanIdStr := string(span.SpanId)
+				err := th.syncExceptionData(exceptionDetails, spanIdStr)
+				if err != nil {
+					logger.Error(TRACE_LOG_TAG, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
-				if len(exception.Stacktrace) > 0 {
-					hash := zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
-					err := th.exceptionRedisHandler.SetValue(hash, exception)
-					if err != nil {
-						logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", span.SpanId, " with error ", err)
-					}
-				} else {
-					logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", span.SpanId)
-				}
-
 			}
 		}
 	}
@@ -241,6 +226,42 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	spanDetail.EndNs = span.EndTimeUnixNano
 
 	return spanDetail
+}
+
+func (th *TraceHandler) createExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
+	exceptionAttr := event.Attributes
+	logger.Debug(TRACE_LOG_TAG, "Exception attributes ", exceptionAttr)
+	exception := model.ExceptionDetails{}
+	for _, attr := range exceptionAttr {
+		switch attr.Key {
+		case "exception.stacktrace":
+			exception.Stacktrace = attr.Value.GetStringValue()
+		case "exception.message":
+			exception.Message = attr.Value.GetStringValue()
+		case "exception.type":
+			exception.Type = attr.Value.GetStringValue()
+		}
+	}
+	return &exception
+}
+
+func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spanId string) error {
+	if len(exception.Stacktrace) > 0 {
+		hash := zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
+		_, ok := th.exceptionData[hash]
+		if !ok {
+			err := th.exceptionRedisHandler.SetValue(hash, exception)
+			if err != nil {
+				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
+				return err
+			}
+			th.exceptionData[hash] = exception
+		}
+	} else {
+		logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", spanId)
+		return fmt.Errorf("no stacktrace for the expcetion")
+	}
+	return nil
 }
 
 func (th *TraceHandler) convertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
