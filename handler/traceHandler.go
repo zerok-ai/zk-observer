@@ -2,14 +2,12 @@ package handler
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"sync"
@@ -108,7 +106,7 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	for _, resourceSpans := range traceData.ResourceSpans {
 		attrMap := map[string]interface{}{}
 		if resourceSpans.Resource != nil {
-			attrMap = th.convertKVListToMap(resourceSpans.Resource.Attributes)
+			attrMap = utils.ConvertKVListToMap(resourceSpans.Resource.Attributes)
 		}
 		for _, scopeSpans := range resourceSpans.ScopeSpans {
 			for _, span := range scopeSpans.Spans {
@@ -144,9 +142,9 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	if len(spanDetail.ParentSpanID) == 0 {
 		spanDetail.ParentSpanID = "0000000000000000"
 	}
-	spanDetail.SpanKind = th.getSpanKind(span.Kind)
+	spanDetail.SpanKind = utils.GetSpanKind(span.Kind)
 
-	attrMap := th.convertKVListToMap(span.Attributes)
+	attrMap := utils.ConvertKVListToMap(span.Attributes)
 
 	logger.Debug(TRACE_LOG_TAG, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
@@ -185,55 +183,4 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	spanDetail.EndNs = span.EndTimeUnixNano
 
 	return spanDetail
-}
-
-func (th *TraceHandler) convertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
-	attrMap := map[string]interface{}{}
-	for _, kv := range attr {
-		value := th.getAnyValue(kv.Value)
-		if value != nil {
-			attrMap[kv.Key] = value
-		}
-	}
-	return attrMap
-}
-
-func (th *TraceHandler) getAnyValue(value *commonv1.AnyValue) interface{} {
-	switch v := value.Value.(type) {
-	case *commonv1.AnyValue_StringValue:
-		return v.StringValue
-	case *commonv1.AnyValue_ArrayValue:
-		var arr []interface{}
-		for _, item := range v.ArrayValue.Values {
-			arr = append(arr, th.getAnyValue(item))
-		}
-		return arr
-	case *commonv1.AnyValue_BoolValue:
-		return v.BoolValue
-	case *commonv1.AnyValue_DoubleValue:
-		return v.DoubleValue
-	case *commonv1.AnyValue_BytesValue:
-		return v.BytesValue
-	case *commonv1.AnyValue_IntValue:
-		return v.IntValue
-	default:
-		fmt.Println("Variable has an unknown type.")
-	}
-	return nil
-}
-
-func (th *TraceHandler) getSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
-	switch kind {
-	case tracev1.Span_SPAN_KIND_INTERNAL:
-		return model.SpanKindInternal
-	case tracev1.Span_SPAN_KIND_SERVER:
-		return model.SpanKindServer
-	case tracev1.Span_SPAN_KIND_PRODUCER:
-		return model.SpanKindProducer
-	case tracev1.Span_SPAN_KIND_CONSUMER:
-		return model.SpanKindConsumer
-	case tracev1.Span_SPAN_KIND_CLIENT:
-		return model.SpanKindClient
-	}
-	return model.SpanKindInternal
 }
