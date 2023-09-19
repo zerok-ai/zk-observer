@@ -45,11 +45,11 @@ func (h *RedisHandler) InitializeRedisConn() error {
 	}
 	redisClient := redis.NewClient(opt)
 
+	h.redisClient = redisClient
 	err := h.PingRedis()
 	if err != nil {
 		return err
 	}
-	h.redisClient = redisClient
 	return nil
 }
 

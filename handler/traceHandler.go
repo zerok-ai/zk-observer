@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
@@ -27,7 +28,7 @@ type TraceHandler struct {
 	traceStore        sync.Map
 	traceRedisHandler *utils.TraceRedisHandler
 	//TODO: Should we also write a ticker to sync the data from redis?
-	existingExceptionData map[string]bool
+	existingExceptionData sync.Map
 	exceptionRedisHandler *utils.RedisHandler
 	otlpConfig            *config.OtlpConfig
 }
@@ -48,6 +49,7 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 
 	handler.exceptionRedisHandler = exceptionRedisHandler
 	handler.traceStore = sync.Map{}
+	handler.existingExceptionData = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
 	return &handler, nil
@@ -200,11 +202,12 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 		for _, event := range span.Events {
 			if event.Name == "exception" {
 				exceptionDetails := th.createExceptionDetails(event)
-				spanIdStr := string(span.SpanId)
-				err := th.syncExceptionData(exceptionDetails, spanIdStr)
+				spanIdStr := hex.EncodeToString(span.SpanId)
+				hash, err := th.syncExceptionData(exceptionDetails, spanIdStr)
 				if err != nil {
 					logger.Error(TRACE_LOG_TAG, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
+				attrMap["exception_hash"] = hash
 			}
 		}
 	}
@@ -245,23 +248,29 @@ func (th *TraceHandler) createExceptionDetails(event *tracev1.Span_Event) *model
 	return &exception
 }
 
-func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spanId string) error {
+func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
+	hash := ""
 	if len(exception.Stacktrace) > 0 {
-		hash := zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
-		_, ok := th.existingExceptionData[hash]
+		hash = zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
+		_, ok := th.existingExceptionData.Load(hash)
 		if !ok {
-			err := th.exceptionRedisHandler.SetValue(hash, exception)
+			exceptionJSON, err := json.Marshal(exception)
+			if err != nil {
+				logger.Debug(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
+				return "", err
+			}
+			err = th.exceptionRedisHandler.SetValue(hash, exceptionJSON)
 			if err != nil {
 				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
-				return err
+				return "", err
 			}
-			th.existingExceptionData[hash] = true
+			th.existingExceptionData.Store(hash, true)
 		}
 	} else {
 		logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", spanId)
-		return fmt.Errorf("no stacktrace for the expcetion")
+		return "", fmt.Errorf("no stacktrace for the expcetion")
 	}
-	return nil
+	return hash, nil
 }
 
 func (th *TraceHandler) convertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
