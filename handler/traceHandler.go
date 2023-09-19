@@ -27,7 +27,7 @@ type TraceHandler struct {
 	traceStore        sync.Map
 	traceRedisHandler *utils.TraceRedisHandler
 	//TODO: Should we also write a ticker to sync the data from redis?
-	exceptionData         map[string]interface{}
+	existingExceptionData map[string]bool
 	exceptionRedisHandler *utils.RedisHandler
 	otlpConfig            *config.OtlpConfig
 }
@@ -248,14 +248,14 @@ func (th *TraceHandler) createExceptionDetails(event *tracev1.Span_Event) *model
 func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spanId string) error {
 	if len(exception.Stacktrace) > 0 {
 		hash := zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
-		_, ok := th.exceptionData[hash]
+		_, ok := th.existingExceptionData[hash]
 		if !ok {
 			err := th.exceptionRedisHandler.SetValue(hash, exception)
 			if err != nil {
 				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
 				return err
 			}
-			th.exceptionData[hash] = exception
+			th.existingExceptionData[hash] = true
 		}
 	} else {
 		logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", spanId)
