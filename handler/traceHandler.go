@@ -2,35 +2,26 @@ package handler
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
-	zkcommon "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
-	"net"
-	"net/http"
 	"sync"
 )
 
 var TRACE_LOG_TAG = "TraceHandler"
-var NET_SOCK_HOST_ADDR = "net.sock.host.addr"
-var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
-var NET_PEER_NAME = "net.peer.name"
 
 type TraceHandler struct {
 	traceStore        sync.Map
 	traceRedisHandler *utils.TraceRedisHandler
-	//TODO: Should we also write a ticker to sync the data from redis?
-	existingExceptionData sync.Map
-	exceptionRedisHandler *utils.RedisHandler
-	otlpConfig            *config.OtlpConfig
+	exceptionHandler  *ExceptionHandler
+	otlpConfig        *config.OtlpConfig
 }
 
 func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
@@ -41,15 +32,14 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 		return nil, err
 	}
 
-	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, "exception")
+	exceptionHandler, err := NewExceptionHandler(config)
 	if err != nil {
-		logger.Error(TRACE_LOG_TAG, "Error while creating exception redis handler:", err)
+		logger.Error(TRACE_LOG_TAG, "Error while creating exception handler:", err)
 		return nil, err
 	}
 
-	handler.exceptionRedisHandler = exceptionRedisHandler
+	handler.exceptionHandler = exceptionHandler
 	handler.traceStore = sync.Map{}
-	handler.existingExceptionData = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
 	return &handler, nil
@@ -148,45 +138,6 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	return spanDetails
 }
 
-func getClientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return ""
-	}
-	return host
-}
-
-func (th *TraceHandler) getSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, ctx iris.Context) (string, string) {
-	destIP := ""
-	sourceIP := ""
-
-	if spanKind == model.SpanKindClient {
-		if len(attributes) > 0 {
-			sourceIP = getClientIP(ctx.Request())
-			logger.Debug(TRACE_LOG_TAG, "Source Ip for client span  is ", sourceIP)
-			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
-				destIP = peerAddr.(string)
-			} else if peerName, ok := attributes[NET_PEER_NAME]; ok {
-				address, err := net.LookupHost(peerName.(string))
-				if err == nil && len(address) > 0 {
-					destIP = address[0]
-				}
-			}
-		}
-	} else if spanKind == model.SpanKindServer {
-		if len(attributes) > 0 {
-			if hostAddr, ok := attributes[NET_SOCK_HOST_ADDR]; ok {
-				destIP = hostAddr.(string)
-			}
-			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
-				sourceIP = peerAddr.(string)
-			}
-		}
-	}
-
-	return sourceIP, destIP
-}
-
 func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) model.SpanDetails {
 	spanDetail := model.SpanDetails{}
 	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
@@ -201,9 +152,9 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {
-				exceptionDetails := th.createExceptionDetails(event)
+				exceptionDetails := CreateExceptionDetails(event)
 				spanIdStr := hex.EncodeToString(span.SpanId)
-				hash, err := th.syncExceptionData(exceptionDetails, spanIdStr)
+				hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 				if err != nil {
 					logger.Error(TRACE_LOG_TAG, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
@@ -221,7 +172,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 		spanDetail.Attributes = attrMap
 	}
 
-	sourceIp, destIp := th.getSourceDestIPPair(spanDetail.SpanKind, attrMap, ctx)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, ctx)
 
 	if len(sourceIp) > 0 {
 		spanDetail.SourceIP = sourceIp
@@ -234,48 +185,6 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	spanDetail.EndNs = span.EndTimeUnixNano
 
 	return spanDetail
-}
-
-func (th *TraceHandler) createExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
-	exceptionAttr := event.Attributes
-	logger.Debug(TRACE_LOG_TAG, "Exception attributes ", exceptionAttr)
-	exception := model.ExceptionDetails{}
-	for _, attr := range exceptionAttr {
-		switch attr.Key {
-		case "exception.stacktrace":
-			exception.Stacktrace = attr.Value.GetStringValue()
-		case "exception.message":
-			exception.Message = attr.Value.GetStringValue()
-		case "exception.type":
-			exception.Type = attr.Value.GetStringValue()
-		}
-	}
-	return &exception
-}
-
-func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
-	hash := ""
-	if len(exception.Stacktrace) > 0 {
-		hash = zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
-		_, ok := th.existingExceptionData.Load(hash)
-		if !ok {
-			exceptionJSON, err := json.Marshal(exception)
-			if err != nil {
-				logger.Debug(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
-				return "", err
-			}
-			err = th.exceptionRedisHandler.SetNX(hash, exceptionJSON)
-			if err != nil {
-				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
-				return "", err
-			}
-			th.existingExceptionData.Store(hash, true)
-		}
-	} else {
-		logger.Error(TRACE_LOG_TAG, "Could not find stacktrace for exception for span Id ", spanId)
-		return "", fmt.Errorf("no stacktrace for the expcetion")
-	}
-	return hash, nil
 }
 
 func (th *TraceHandler) convertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
