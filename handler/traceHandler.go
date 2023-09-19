@@ -264,7 +264,7 @@ func (th *TraceHandler) syncExceptionData(exception *model.ExceptionDetails, spa
 				logger.Debug(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
-			err = th.exceptionRedisHandler.SetValue(hash, exceptionJSON)
+			err = th.exceptionRedisHandler.SetNX(hash, exceptionJSON)
 			if err != nil {
 				logger.Error(TRACE_LOG_TAG, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
 				return "", err

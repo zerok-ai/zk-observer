@@ -53,8 +53,13 @@ func (h *RedisHandler) InitializeRedisConn() error {
 	return nil
 }
 
-func (h *RedisHandler) SetValue(key string, value interface{}) error {
+func (h *RedisHandler) Set(key string, value interface{}) error {
 	statusCmd := h.redisClient.Set(h.ctx, key, value, 0)
+	return statusCmd.Err()
+}
+
+func (h *RedisHandler) SetNX(key string, value interface{}) error {
+	statusCmd := h.redisClient.SetNX(h.ctx, key, value, 0)
 	return statusCmd.Err()
 }
 
