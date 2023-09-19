@@ -12,7 +12,7 @@ spec:
           http:
     exporters:
       otlphttp: 
-        endpoint: http://zk-otlp-receiver.zk-client.svc.cluster.local:80
+        endpoint: http://0.0.0.0:31600
         compression: "none"
     service:
       pipelines:
