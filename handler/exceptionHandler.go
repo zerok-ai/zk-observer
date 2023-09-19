@@ -42,7 +42,7 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 		if !ok {
 			exceptionJSON, err := json.Marshal(exception)
 			if err != nil {
-				logger.Debug(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
+				logger.Error(TRACE_LOG_TAG, "Error encoding exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
 			err = th.redisHandler.SetNX(hash, exceptionJSON)

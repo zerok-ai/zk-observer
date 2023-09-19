@@ -16,10 +16,11 @@ import (
 var TRACE_LOG_TAG = "TraceHandler"
 
 type TraceHandler struct {
-	traceStore        sync.Map
-	traceRedisHandler *utils.TraceRedisHandler
-	exceptionHandler  *ExceptionHandler
-	otlpConfig        *config.OtlpConfig
+	traceStore             sync.Map
+	traceRedisHandler      *utils.TraceRedisHandler
+	exceptionHandler       *ExceptionHandler
+	resourceDetailsHandler *ResourceDetailsHandler
+	otlpConfig             *config.OtlpConfig
 }
 
 func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
@@ -36,6 +37,13 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 		return nil, err
 	}
 
+	resourceHandler, err := NewResourceDetailsHandler(config)
+	if err != nil {
+		logger.Error(TRACE_LOG_TAG, "Error while creating resource details handler:", err)
+		return nil, err
+	}
+
+	handler.resourceDetailsHandler = resourceHandler
 	handler.exceptionHandler = exceptionHandler
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
@@ -104,9 +112,9 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	var spanDetails []*model.SpanDetails
 
 	for _, resourceSpans := range traceData.ResourceSpans {
-		attrMap := map[string]interface{}{}
+		resourceAttrMap := map[string]interface{}{}
 		if resourceSpans.Resource != nil {
-			attrMap = utils.ConvertKVListToMap(resourceSpans.Resource.Attributes)
+			resourceAttrMap = utils.ConvertKVListToMap(resourceSpans.Resource.Attributes)
 		}
 		for _, scopeSpans := range resourceSpans.ScopeSpans {
 			for _, span := range scopeSpans.Spans {
@@ -116,8 +124,6 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 				logger.Debug(TRACE_LOG_TAG, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, ctx)
-
-				spanDetails.ResourceAttr = attrMap
 
 				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
 					SpanDetailsMap: sync.Map{},
@@ -130,6 +136,12 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 
 				//Updating the traceDetails in traceStore.
 				th.traceStore.Store(traceId, traceDetails)
+
+				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
+				if err != nil {
+					logger.Error(TRACE_LOG_TAG, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
+					return nil
+				}
 			}
 		}
 	}

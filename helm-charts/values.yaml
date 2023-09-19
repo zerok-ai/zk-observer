@@ -12,6 +12,8 @@ zkOtlpReceiver:
      syncDuration: 10000 #millis
      dbs:
       traces: 3
+      exception: 8
+      resource: 5
     logs:
       color: true
       level: DEBUG

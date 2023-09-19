@@ -5,7 +5,6 @@ type SpanDetails struct {
 	ParentSpanID string                 `json:"parent_span_id"`
 	Endpoint     string                 `json:"endpoint,omitempty"`
 	Exception    *SpanDetailsException  `json:"exception,omitempty"`
-	ResourceAttr map[string]interface{} `json:"resource_attributes,omitempty"`
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
 	StartNs      uint64                 `json:"start_ns"`
 	EndNs        uint64                 `json:"end_ns"`
