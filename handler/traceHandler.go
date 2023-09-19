@@ -207,7 +207,12 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 				if err != nil {
 					logger.Error(TRACE_LOG_TAG, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
-				attrMap["exception_hash"] = hash
+				spanExceptionDetails := model.SpanDetailsException{
+					Hash:    hash,
+					Type:    exceptionDetails.Type,
+					Message: exceptionDetails.Message,
+				}
+				spanDetail.Exception = spanExceptionDetails
 			}
 		}
 	}
