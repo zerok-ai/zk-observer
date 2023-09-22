@@ -11,3 +11,19 @@ spec:
       targetPort: 8147
       nodePort: 31600
   type: NodePort
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-otlp-grpc-receiver
+spec:
+  selector:
+    app: zk-otlp-receiver
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 4317
+      nodePort: 31601
+  type: NodePort
