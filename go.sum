@@ -147,6 +147,8 @@ github.com/yosssi/ace v0.0.5/go.mod h1:ALfIzm2vT7t5ZE7uoIZqF3TQ7SAOyupFZnkrF5id+
 github.com/yudai/gojsondiff v1.0.0 h1:27cbfqXLVEJ1o8I6v3y9lg8Ydm53EKqHXAOMxEGlCOA=
 github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 h1:BHyfKlQyqbsFN5p3IfnEUduWvb9is428/nNb5L3U01M=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
+github.com/zerok-ai/zk-utils-go v0.4.11-0.20230923082256-7f3e54f80a82 h1:ccAvIsQKSVBfQkBtXvOLysxo5dF2PdSyFpNhrNLi0UQ=
+github.com/zerok-ai/zk-utils-go v0.4.11-0.20230923082256-7f3e54f80a82/go.mod h1:AkTJzKzvqxVTO9zOFtACNGnsKwHqqfaCnO7ISDlMHNk=
 github.com/zerok-ai/zk-utils-go v0.4.13 h1:i1ES0cJ5XawBvm6C6otqtJAB8TJOGOD5k5KoSlF2dqE=
 github.com/zerok-ai/zk-utils-go v0.4.13/go.mod h1:LNXMma0iQ0V9K4H/bNKbBIOquLp4TLJDjjTyQ4OiEZk=
 go.opentelemetry.io/proto/otlp v1.0.0 h1:T0TX0tmXU8a3CbNXzEKGeU5mIVOdf0oykP+u2lIVU/I=
