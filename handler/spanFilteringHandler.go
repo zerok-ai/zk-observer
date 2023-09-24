@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
@@ -10,6 +12,7 @@ import (
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"math/rand"
 	"sync"
 	"time"
@@ -23,9 +26,14 @@ type SpanFilteringHandler struct {
 	ruleEvaluator   evaluator.RuleEvaluator
 	redisHandler    *utils.RedisHandler
 	workloadDetails sync.Map
+	ctx             context.Context
+	ticker          *zktick.TickerTask
+	count           int
+	startTime       time.Time
+	pipeline        redis.Pipeliner
 }
 
-type workLoadTraceId struct {
+type WorkLoadTraceId struct {
 	WorkLoadId string
 	TraceId    string
 }
@@ -48,6 +56,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.Cfg = cfg
 	handler.ruleEvaluator = evaluator.NewRuleEvaluator()
 	handler.workloadDetails = sync.Map{}
+	handler.ctx = context.Background()
 	return &handler, nil
 }
 
@@ -69,22 +78,81 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails *model.SpanDetails, trace
 				logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
 				currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 				key := currentTime + "_" + h.getRandomNumber() + "_" + id
-				h.workloadDetails.Store(key, workLoadTraceId{WorkLoadId: id, TraceId: traceId})
+				h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
 			}
 		}
 	}
+	err := h.syncWorkloadsToRedis()
+	if err != nil {
+		logger.Error(spanFilteringLogTag, "Error while syncing workload data to redis pipeline ", err)
+	}
 }
 
-func (h *SpanFilteringHandler) syncWorkloadsToRedis(workloadIds []string, traceId string) {
-	for _, workloadId := range workloadIds {
-		key := workloadId + "_" + h.getCurrentSuffix()
-		//TODO: Confirm with avin what is the format here.
-		logger.Debug(spanFilteringLogTag, "Setting value for key: ", key, " workloadId ", workloadId)
+func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
+	err := h.redisHandler.CheckRedisConnection()
+	if err != nil {
+		logger.Error(spanFilteringLogTag, "Error while checking redis conn ", err)
+		return err
+	}
+	var keysToDelete []string
+	h.workloadDetails.Range(func(key, value interface{}) bool {
+		keyStr := key.(string)
+		workLoadTraceId := value.(*WorkLoadTraceId)
+
+		workloadId := workLoadTraceId.WorkLoadId
+		traceId := workLoadTraceId.TraceId
+
+		redisKey := workloadId + "_" + h.getCurrentSuffix()
+		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
+		logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
+		h.pipeline.SAdd(h.ctx, redisKey, traceId)
+		h.pipeline.Expire(h.ctx, redisKey, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
+		h.count++
+		keysToDelete = append(keysToDelete, keyStr)
+		return true
+	})
+	h.syncPipeline()
+	// Delete the keys from the sync.Map after the iteration
+	for _, key := range keysToDelete {
+		h.workloadDetails.Delete(key)
+	}
+	return nil
+}
+
+func (h *SpanFilteringHandler) syncPipeline() {
+	syncDuration := time.Duration(h.Cfg.Workloads.SyncDuration) * time.Millisecond
+	if h.count > h.Cfg.Workloads.BatchSize || time.Since(h.startTime) >= syncDuration {
+		_, err := h.pipeline.Exec(h.ctx)
+		if err != nil {
+			logger.Error(spanFilteringLogTag, "Error while syncing data to redis ", err)
+			return
+		}
+		logger.Debug(spanFilteringLogTag, "Pipeline synchronized on batchsize/syncDuration")
+
+		h.count = 0
+		h.startTime = time.Now()
+	}
+}
+
+func (h *SpanFilteringHandler) forceSync() {
+	_, err := h.pipeline.Exec(h.ctx)
+	if err != nil {
+		logger.Error(spanFilteringLogTag, "Error while force syncing data to redis ", err)
+		return
+	}
+}
+
+func (h *SpanFilteringHandler) shutdown() {
+	h.forceSync()
+	err := h.redisHandler.CloseConnection()
+	if err != nil {
+		logger.Error(spanFilteringLogTag, "Error while closing redis conn.")
+		return
 	}
 }
 
 func (h *SpanFilteringHandler) getCurrentSuffix() string {
-	//TODO: Confirm with avin, if this is okay for getting the key.
+	//TODO: Confirm with Avin, if this is okay for getting the key.
 	randomNumber := rand.Intn(11)
 	return fmt.Sprintf("%v", randomNumber)
 }

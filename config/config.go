@@ -12,6 +12,13 @@ type TraceConfig struct {
 	Ttl           int `yaml:"ttl"`
 }
 
+type WorkloadConfig struct {
+	SyncDuration  int `yaml:"syncDuration"`
+	TimerDuration int `yaml:"timerDuration"`
+	BatchSize     int `yaml:"batchSize"`
+	Ttl           int `yaml:"ttl"`
+}
+
 type ScenarioConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 }
@@ -23,6 +30,7 @@ type OtlpConfig struct {
 	Logs              logsConfig.LogsConfig `yaml:"logs"`
 	Redis             zkconfig.RedisConfig  `yaml:"redis"`
 	Traces            TraceConfig           `yaml:"traces"`
+	Workloads         WorkloadConfig        `yaml:"workloads"`
 	Scenario          ScenarioConfig        `yaml:"scenario"`
 }
 

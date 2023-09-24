@@ -9,6 +9,11 @@ data:
       timerDuration: 5000 #millis
       batchSize: 30
       ttl: 1800
+    workloads:
+      syncDuration: 10000 #millis
+      timerDuration: 5000 #millis
+      batchSize: 30
+      ttl: 1800
     redis:
      port: 6379
      dbs:
