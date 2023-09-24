@@ -21,11 +21,12 @@ type TraceHandler struct {
 	exceptionHandler       *ExceptionHandler
 	resourceDetailsHandler *ResourceDetailsHandler
 	otlpConfig             *config.OtlpConfig
+	spanFilteringHandler   *SpanFilteringHandler
 }
 
 func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler := TraceHandler{}
-	traceRedisHandler, err := utils.NewTracesRedisHandler(&config.Redis)
+	traceRedisHandler, err := utils.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
@@ -48,6 +49,13 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
+	spanFilteringHandler, err := NewSpanFilteringHandler(config)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
+		return nil, err
+	}
+	handler.spanFilteringHandler = spanFilteringHandler
+
 	return &handler, nil
 }
 

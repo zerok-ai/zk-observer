@@ -20,12 +20,12 @@ type TraceRedisHandler struct {
 	ticker       *zktick.TickerTask
 	count        int
 	startTime    time.Time
-	config       *config.RedisConfig
+	config       *config.OtlpConfig
 	pipeline     redis.Pipeliner
 }
 
-func NewTracesRedisHandler(redisConfig *config.RedisConfig) (*TraceRedisHandler, error) {
-	redisHandler, err := NewRedisHandler(redisConfig, traceDbName)
+func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, error) {
+	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, traceDbName)
 
 	if err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while creating redis client ", err)
@@ -34,13 +34,13 @@ func NewTracesRedisHandler(redisConfig *config.RedisConfig) (*TraceRedisHandler,
 	handler := &TraceRedisHandler{
 		redisHandler: redisHandler,
 		ctx:          context.Background(),
-		config:       redisConfig,
+		config:       otlpConfig,
 		startTime:    time.Now(),
 	}
 
 	handler.pipeline = handler.redisHandler.redisClient.Pipeline()
 
-	timerDuration := time.Duration(redisConfig.TimerDuration) * time.Millisecond
+	timerDuration := time.Duration(otlpConfig.Traces.TimerDuration) * time.Millisecond
 	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
 	handler.ticker.Start()
 
@@ -48,8 +48,8 @@ func NewTracesRedisHandler(redisConfig *config.RedisConfig) (*TraceRedisHandler,
 }
 
 func (h *TraceRedisHandler) syncPipeline() {
-	syncDuration := time.Duration(h.config.SyncDuration) * time.Millisecond
-	if h.count > h.config.BatchSize || time.Since(h.startTime) >= syncDuration {
+	syncDuration := time.Duration(h.config.Traces.SyncDuration) * time.Millisecond
+	if h.count > h.config.Traces.BatchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.pipeline.Exec(h.ctx)
 		if err != nil {
 			logger.Error(traceRedisHandlerLogTag, "Error while syncing data to redis ", err)
@@ -84,7 +84,7 @@ func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.Tra
 	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
 	h.pipeline.HMSet(ctx, traceID, spanJsonMap)
 	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
-	h.pipeline.Expire(ctx, traceID, time.Duration(h.config.Ttl)*time.Second)
+	h.pipeline.Expire(ctx, traceID, time.Duration(h.config.Traces.Ttl)*time.Second)
 	h.count++
 	h.syncPipeline()
 	return nil

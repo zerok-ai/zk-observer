@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	zkconfig "github.com/zerok-ai/zk-utils-go/storage/redis/config"
 )
 
 var redisHandlerLogTag = "RedisHandler"
@@ -13,11 +13,11 @@ var redisHandlerLogTag = "RedisHandler"
 type RedisHandler struct {
 	redisClient *redis.Client
 	ctx         context.Context
-	config      *config.RedisConfig
+	config      *zkconfig.RedisConfig
 	dbName      string
 }
 
-func NewRedisHandler(redisConfig *config.RedisConfig, dbName string) (*RedisHandler, error) {
+func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string) (*RedisHandler, error) {
 	handler := &RedisHandler{
 		ctx:    context.Background(),
 		config: redisConfig,

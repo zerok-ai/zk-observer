@@ -2,17 +2,18 @@ package config
 
 import (
 	logsConfig "github.com/zerok-ai/zk-utils-go/logs/config"
+	zkconfig "github.com/zerok-ai/zk-utils-go/storage/redis/config"
 )
 
-type RedisConfig struct {
-	Host          string         `yaml:"host" env:"ZK_REDIS_HOST" env-description:"Database host"`
-	Password      string         `yaml:"password" env:"ZK_REDIS_PASSWORD" env-description:"Database password"`
-	Port          string         `yaml:"port" env-description:"Database port"`
-	DBs           map[string]int `yaml:"dbs" env-description:"Database to load"`
-	Ttl           int            `yaml:"ttl"`
-	SyncDuration  int            `yaml:"syncDuration"`
-	TimerDuration int            `yaml:"timerDuration"`
-	BatchSize     int            `yaml:"batchSize"`
+type TraceConfig struct {
+	SyncDuration  int `yaml:"syncDuration"`
+	TimerDuration int `yaml:"timerDuration"`
+	BatchSize     int `yaml:"batchSize"`
+	Ttl           int `yaml:"ttl"`
+}
+
+type ScenarioConfig struct {
+	SyncDuration int `yaml:"syncDuration"`
 }
 
 type OtlpConfig struct {
@@ -20,7 +21,9 @@ type OtlpConfig struct {
 	SetHttpEndpoint   bool                  `yaml:"setHttpEndPoint"`
 	SetSpanAttributes bool                  `yaml:"setSpanAttributes"`
 	Logs              logsConfig.LogsConfig `yaml:"logs"`
-	Redis             RedisConfig           `yaml:"redis"`
+	Redis             zkconfig.RedisConfig  `yaml:"redis"`
+	Traces            TraceConfig           `yaml:"traces"`
+	Scenario          ScenarioConfig        `yaml:"scenario"`
 }
 
 func CreateConfig() *OtlpConfig {
