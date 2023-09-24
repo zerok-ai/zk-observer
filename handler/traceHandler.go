@@ -10,10 +10,12 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
+	"strings"
 	"sync"
 )
 
 var traceLogTag = "TraceHandler"
+var delimiter = "__"
 
 type TraceHandler struct {
 	traceStore             sync.Map
@@ -93,18 +95,22 @@ func (th *TraceHandler) pushDataToRedis() error {
 	var keysToDelete []string
 	var err error
 
-	th.traceStore.Range(func(traceID, value interface{}) bool {
-		traceIDStr := traceID.(string)
-		traceDetails := value.(*model.TraceDetails)
-
-		err = th.traceRedisHandler.PutTraceData(traceIDStr, traceDetails)
-		if err != nil {
-			logger.Debug(traceLogTag, "Error whole putting trace data to redis ", err)
-			// Returning false to stop the iteration
-			return false
+	th.traceStore.Range(func(key, value interface{}) bool {
+		keyStr := key.(string)
+		spanDetails := value.(*model.SpanDetails)
+		//Split keyStr using delimiter.
+		ids := strings.Split(keyStr, delimiter)
+		if len(ids) == 2 {
+			traceIDStr := ids[0]
+			spanIDStr := ids[1]
+			err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanDetails)
+			if err != nil {
+				logger.Debug(traceLogTag, "Error whole putting trace data to redis ", err)
+				// Returning false to stop the iteration
+				return false
+			}
 		}
-
-		keysToDelete = append(keysToDelete, traceIDStr)
+		keysToDelete = append(keysToDelete, keyStr)
 		return true
 	})
 
@@ -136,17 +142,9 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				th.spanFilteringHandler.FilterSpans(&spanDetails, traceId)
 
-				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
-					SpanDetailsMap: sync.Map{},
-				})
-
-				traceDetails := traceDetailsPresent.(*model.TraceDetails)
-
-				//Adding the new span details to traceDetails
-				traceDetails.SetSpanDetails(spanId, spanDetails)
-
-				//Updating the traceDetails in traceStore.
-				th.traceStore.Store(traceId, traceDetails)
+				//Updating the spanDetails in traceStore.
+				key := traceId + delimiter + spanId
+				th.traceStore.Store(key, spanDetails)
 
 				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
 				if err != nil {

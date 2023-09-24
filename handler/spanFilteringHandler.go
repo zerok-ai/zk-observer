@@ -11,16 +11,23 @@ import (
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 var spanFilteringLogTag = "SpanFilteringHandler"
 
 type SpanFilteringHandler struct {
-	VersionedStore *zkredis.VersionedStore[zkmodel.Scenario]
-	Cfg            *config.OtlpConfig
-	ruleEvaluator  evaluator.RuleEvaluator
-	redisHandler   *utils.RedisHandler
+	VersionedStore  *zkredis.VersionedStore[zkmodel.Scenario]
+	Cfg             *config.OtlpConfig
+	ruleEvaluator   evaluator.RuleEvaluator
+	redisHandler    *utils.RedisHandler
+	workloadDetails sync.Map
+}
+
+type workLoadTraceId struct {
+	WorkLoadId string
+	TraceId    string
 }
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, error) {
@@ -40,11 +47,12 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.VersionedStore = store
 	handler.Cfg = cfg
 	handler.ruleEvaluator = evaluator.NewRuleEvaluator()
+	handler.workloadDetails = sync.Map{}
 	return &handler, nil
 }
 
 func (h *SpanFilteringHandler) FilterSpans(spanDetails *model.SpanDetails, traceId string) {
-	filteredWorkloadIds := []string{}
+	//filteredWorkloadIds := []string{}
 	scenarios := h.VersionedStore.GetAllValues()
 	//logger.Debug(spanFilteringLogTag, "Reached FilterSpans method.")
 	for _, scenario := range scenarios {
@@ -59,14 +67,15 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails *model.SpanDetails, trace
 			}
 			if value {
 				logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
-				filteredWorkloadIds = append(filteredWorkloadIds, id)
+				currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
+				key := currentTime + "_" + h.getRandomNumber() + "_" + id
+				h.workloadDetails.Store(key, workLoadTraceId{WorkLoadId: id, TraceId: traceId})
 			}
 		}
 	}
-	h.saveWorkloadsToRedis(filteredWorkloadIds, traceId)
 }
 
-func (h *SpanFilteringHandler) saveWorkloadsToRedis(workloadIds []string, traceId string) {
+func (h *SpanFilteringHandler) syncWorkloadsToRedis(workloadIds []string, traceId string) {
 	for _, workloadId := range workloadIds {
 		key := workloadId + "_" + h.getCurrentSuffix()
 		//TODO: Confirm with avin what is the format here.
@@ -77,5 +86,10 @@ func (h *SpanFilteringHandler) saveWorkloadsToRedis(workloadIds []string, traceI
 func (h *SpanFilteringHandler) getCurrentSuffix() string {
 	//TODO: Confirm with avin, if this is okay for getting the key.
 	randomNumber := rand.Intn(11)
+	return fmt.Sprintf("%v", randomNumber)
+}
+
+func (h *SpanFilteringHandler) getRandomNumber() string {
+	randomNumber := rand.Intn(10000)
 	return fmt.Sprintf("%v", randomNumber)
 }

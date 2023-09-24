@@ -62,29 +62,24 @@ func (h *TraceRedisHandler) syncPipeline() {
 	}
 }
 
-func (h *TraceRedisHandler) PutTraceData(traceID string, traceDetails *model.TraceDetails) error {
+func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails *model.SpanDetails) error {
+
 	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
 	}
 	spanJsonMap := make(map[string]string)
-	traceDetails.SpanDetailsMap.Range(func(spanId, value interface{}) bool {
-		spanIdStr := spanId.(string)
-		spanDetails := value.(model.SpanDetails)
-		spanJSON, err := json.Marshal(spanDetails)
-		if err != nil {
-			logger.Debug(traceRedisHandlerLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIdStr, err)
-			return true
-		}
-		spanJsonMap[spanIdStr] = string(spanJSON)
-		return true
-	})
+	spanJSON, err := json.Marshal(spanDetails)
+	if err != nil {
+		logger.Debug(traceRedisHandlerLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanId, err)
+		return err
+	}
+	spanJsonMap[spanId] = string(spanJSON)
 
 	ctx := context.Background()
 	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
-	h.pipeline.HMSet(ctx, traceID, spanJsonMap)
-	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
-	h.pipeline.Expire(ctx, traceID, time.Duration(h.config.Traces.Ttl)*time.Second)
+	h.pipeline.HMSet(ctx, traceId, spanJsonMap)
+	h.pipeline.Expire(ctx, traceId, time.Duration(h.config.Traces.Ttl)*time.Second)
 	h.count++
 	h.syncPipeline()
 	return nil
