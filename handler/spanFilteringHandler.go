@@ -31,7 +31,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) findMatchingWorkLoadIds(spanDetails *model.SpanDetails) {
+func (h *SpanFilteringHandler) FilterSpans(spanDetails *model.SpanDetails) {
 	scenarios := h.VersionedStore.GetAllValues()
 	for _, scenario := range scenarios {
 		//Getting workloads and iterate over them

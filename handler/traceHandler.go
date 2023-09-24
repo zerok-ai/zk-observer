@@ -133,6 +133,8 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 
 				spanDetails := th.createSpanDetails(span, ctx)
 
+				th.spanFilteringHandler.FilterSpans(&spanDetails)
+
 				traceDetailsPresent, _ := th.traceStore.LoadOrStore(traceId, &model.TraceDetails{
 					SpanDetailsMap: sync.Map{},
 				})
