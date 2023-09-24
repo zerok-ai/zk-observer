@@ -1,3 +1,6 @@
 package common
 
-var RedisScenarioDbName = "scenario_db"
+var (
+	RedisScenarioDbName = "scenario_db"
+	WorkloadSpanDbName  = "workloads"
+)
