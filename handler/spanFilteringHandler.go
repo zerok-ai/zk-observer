@@ -61,12 +61,27 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 }
 
 func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, traceId string) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error(spanFilteringLogTag, "Recovered from panic: ", r)
+		}
+	}()
+	logger.Debug(spanFilteringLogTag, "Span details are: ", spanDetails)
 	scenarios := h.VersionedStore.GetAllValues()
 	for _, scenario := range scenarios {
+		if scenario == nil {
+			logger.Debug(spanFilteringLogTag, "No scenario found")
+			continue
+		}
 		//Getting workloads and iterate over them
 		workloads := scenario.Workloads
+		if workloads == nil {
+			logger.Debug(spanFilteringLogTag, "No workloads found for scenario: ", scenario.Title)
+			continue
+		}
 		for id, workload := range *workloads {
 			rule := workload.Rule
+			logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
 			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
 			if err != nil {
 				continue
@@ -94,7 +109,7 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 	var keysToDelete []string
 	h.workloadDetails.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
-		workLoadTraceId := value.(*WorkLoadTraceId)
+		workLoadTraceId := value.(WorkLoadTraceId)
 
 		workloadId := workLoadTraceId.WorkLoadId
 		traceId := workLoadTraceId.TraceId

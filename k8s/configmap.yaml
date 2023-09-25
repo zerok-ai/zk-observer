@@ -20,7 +20,7 @@ data:
       traces: 3
       exception: 8
       resource: 5
-      scenario_db: 6
+      scenario_db: 2
       workloads: 1
     logs:
       color: true

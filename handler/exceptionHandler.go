@@ -62,7 +62,7 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 
 func CreateExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
 	exceptionAttr := event.Attributes
-	logger.Debug(exceptionLogTag, "Exception attributes ", exceptionAttr)
+	//logger.Debug(exceptionLogTag, "Exception attributes ", exceptionAttr)
 	exception := model.ExceptionDetails{}
 	for _, attr := range exceptionAttr {
 		switch attr.Key {

@@ -173,6 +173,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {
+				logger.Debug(traceLogTag, "Found exception event")
 				exceptionDetails := CreateExceptionDetails(event)
 				spanIdStr := hex.EncodeToString(span.SpanId)
 				hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)

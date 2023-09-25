@@ -151,8 +151,8 @@ github.com/yosssi/ace v0.0.5/go.mod h1:ALfIzm2vT7t5ZE7uoIZqF3TQ7SAOyupFZnkrF5id+
 github.com/yudai/gojsondiff v1.0.0 h1:27cbfqXLVEJ1o8I6v3y9lg8Ydm53EKqHXAOMxEGlCOA=
 github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 h1:BHyfKlQyqbsFN5p3IfnEUduWvb9is428/nNb5L3U01M=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-github.com/zerok-ai/zk-utils-go v0.4.11-0.20230923082256-7f3e54f80a82 h1:ccAvIsQKSVBfQkBtXvOLysxo5dF2PdSyFpNhrNLi0UQ=
-github.com/zerok-ai/zk-utils-go v0.4.11-0.20230923082256-7f3e54f80a82/go.mod h1:AkTJzKzvqxVTO9zOFtACNGnsKwHqqfaCnO7ISDlMHNk=
+github.com/zerok-ai/zk-utils-go v0.4.11-0.20230925060310-65a94d9af525 h1:TBQ3SzwG7go+K2U2N+n/x4/Yh1/IitubUsuekVRNfxs=
+github.com/zerok-ai/zk-utils-go v0.4.11-0.20230925060310-65a94d9af525/go.mod h1:AkTJzKzvqxVTO9zOFtACNGnsKwHqqfaCnO7ISDlMHNk=
 go.opentelemetry.io/proto/otlp v1.0.0 h1:T0TX0tmXU8a3CbNXzEKGeU5mIVOdf0oykP+u2lIVU/I=
 go.opentelemetry.io/proto/otlp v1.0.0/go.mod h1:Sy6pihPLfYHkr3NkUbEhGHFhINUSI/v80hjKIs5JXpM=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
