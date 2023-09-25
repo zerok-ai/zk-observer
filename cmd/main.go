@@ -5,26 +5,34 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
+	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
+	"net"
 )
 
 var mainLogTag = "main"
 
 type grpcServer struct {
 	pb.UnimplementedTraceServiceServer
+	traceHandler *handler.TraceHandler
 }
 
 func (s *grpcServer) Export(context context.Context, req *pb.ExportTraceServiceRequest) (*pb.ExportTraceServiceResponse, error) {
 	logger.Debug(mainLogTag, "Export method invoked.")
-	for _, resourceSpan := range req.ResourceSpans {
-		logger.Debug(mainLogTag, "Received resource: ", resourceSpan.Resource.Attributes)
-		for _, scopeSpan := range resourceSpan.ScopeSpans {
-			for _, span := range scopeSpan.Spans {
-				logger.Debug(mainLogTag, "Received span: ", span.SpanId)
-			}
-		}
+	peer, ok := peer.FromContext(context)
+	remoteAddr := ""
+	if ok {
+		remoteAddr = peer.Addr.String()
+		remoteAddr = utils.GetClientIP(remoteAddr)
+	}
+	s.traceHandler.ProcessTraceData(req.ResourceSpans, remoteAddr)
+	err := s.traceHandler.PushDataToRedis()
+	if err != nil {
+		logger.Error(mainLogTag, "Error while pushing data to redis ", err)
 	}
 	return &pb.ExportTraceServiceResponse{}, nil
 }
@@ -40,31 +48,28 @@ func main() {
 
 	logger.Init(otlpConfig.Logs)
 
-	//logger.Debug(mainLogTag, "Starting grpc server.")
-
-	//Creating grpc server
-	//listener, err := net.Listen("tcp", ":4317")
-	//if err != nil {
-	//	logger.Error(mainLogTag, "Error while creating grpc listener:", err)
-	//	return
-	//}
-	//s := grpc.NewServer()
-	//pb.RegisterTraceServiceServer(s, &grpcServer{})
-	//if err := s.Serve(listener); err != nil {
-	//	logger.Error(mainLogTag, "Failed to start grpc server:", err)
-	//	return
-	//}
-	//
-	//logger.Debug(mainLogTag, "Started grpc server.")
-
-	//Creating http/protobuf server
-
 	traceHandler, err := handler.NewTraceHandler(otlpConfig)
 
 	if err != nil {
 		logger.Error(mainLogTag, "Error while creating traceHandler:", err)
 		return
 	}
+
+	logger.Debug(mainLogTag, "Starting grpc server.")
+
+	//Creating grpc server
+	listener, err := net.Listen("tcp", ":4317")
+	if err != nil {
+		logger.Error(mainLogTag, "Error while creating grpc listener:", err)
+		return
+	}
+	s := grpc.NewServer()
+	pb.RegisterTraceServiceServer(s, &grpcServer{traceHandler: traceHandler})
+	go s.Serve(listener)
+
+	logger.Debug(mainLogTag, "Started grpc server.")
+
+	//Creating http/protobuf server
 
 	app := newApp()
 	irisConfig := iris.WithConfiguration(iris.Configuration{

@@ -1,7 +1,7 @@
 apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
 metadata:
-  name: opentelemetry-http
+  name: opentelemetry-grpc
 spec:
   mode: daemonset
   hostNetwork: true
@@ -9,14 +9,16 @@ spec:
     receivers:
       otlp:
         protocols:
-          http:
+          grpc:
     exporters:
-      otlphttp: 
-        endpoint: http://0.0.0.0:31600
+      otlp: 
+        endpoint: zk-otlp-grpc-receiver.zk-client.svc.cluster.local:80
         compression: "none"
+        tls:
+          insecure: true
     service:
       pipelines:
         traces:
           receivers: [otlp]
           processors: []
-          exporters: [otlphttp]
+          exporters: [otlp]

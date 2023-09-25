@@ -80,8 +80,10 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 		return
 	}
 
-	th.processTraceData(&traceData, ctx)
-	err = th.pushDataToRedis()
+	resourceSpans := traceData.ResourceSpans
+	remoteAddr := utils.GetClientIP(ctx.Request().RemoteAddr)
+	th.ProcessTraceData(resourceSpans, remoteAddr)
+	err = th.PushDataToRedis()
 	if err != nil {
 		logger.Error(traceLogTag, "Error while pushing data to redis ", err)
 		return
@@ -91,7 +93,7 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 	ctx.StatusCode(iris.StatusOK)
 }
 
-func (th *TraceHandler) pushDataToRedis() error {
+func (th *TraceHandler) PushDataToRedis() error {
 	var keysToDelete []string
 	var err error
 
@@ -122,22 +124,26 @@ func (th *TraceHandler) pushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris.Context) []map[string]interface{} {
+func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans, remoteAddr string) []map[string]interface{} {
 	var spanDetails []map[string]interface{}
-
-	for _, resourceSpans := range traceData.ResourceSpans {
+	if len(resourceSpans) == 0 {
+		return spanDetails
+	}
+	for _, resourceSpan := range resourceSpans {
+		schemaUrl := resourceSpan.SchemaUrl
 		resourceAttrMap := map[string]interface{}{}
-		if resourceSpans.Resource != nil {
-			resourceAttrMap = utils.ConvertKVListToMap(resourceSpans.Resource.Attributes)
+		if resourceSpan.Resource != nil {
+			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
 		}
-		for _, scopeSpans := range resourceSpans.ScopeSpans {
+		for _, scopeSpans := range resourceSpan.ScopeSpans {
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
 				logger.Debug(traceLogTag, "spanKind", span.Kind)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
-				spanDetails := th.createSpanDetails(span, ctx)
+				spanDetails := th.createSpanDetails(span, remoteAddr)
+				spanDetails["schema_url"] = schemaUrl
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
@@ -157,7 +163,7 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	return spanDetails
 }
 
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) map[string]interface{} {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, remoteAddr string) map[string]interface{} {
 	spanDetail := map[string]interface{}{}
 	parentSpanId := hex.EncodeToString(span.ParentSpanId)
 	if len(parentSpanId) == 0 {
@@ -200,7 +206,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 		spanDetail[common.AttributesKey] = attrMap
 	}
 
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, ctx)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, remoteAddr)
 
 	if len(sourceIp) > 0 {
 		spanDetail[common.SourceIpKey] = sourceIp
