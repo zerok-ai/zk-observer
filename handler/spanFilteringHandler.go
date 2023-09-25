@@ -74,6 +74,8 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 		if scenario == nil {
 			logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
+		} else {
+			logger.Debug(spanFilteringLogTag, "Scenario found: ", scenario.Id)
 		}
 		//Getting workloads and iterate over them
 		workloads := scenario.Workloads
@@ -82,6 +84,9 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			continue
 		}
 		for id, workload := range *workloads {
+			if workload.Executor != "OTEL" {
+				continue
+			}
 			rule := workload.Rule
 			logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
 			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
