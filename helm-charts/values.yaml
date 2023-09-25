@@ -4,19 +4,29 @@ zkOtlpReceiver:
     port: 8147
     setHttpEndPoint: true
     setSpanAttributes: true
+    traces:
+      syncDuration: 10000 #millis
+      timerDuration: 5000 #millis
+      batchSize: 30
+      ttl: 1800
+    workloads:
+      syncDuration: 10000 #millis
+      timerDuration: 5000 #millis
+      batchSize: 30
+      ttl: 1800
     redis:
      port: 6379
-     ttl: 1800 #seconds
-     batchSize: 30
-     timerDuration: 5000 #millis
-     syncDuration: 10000 #millis
      dbs:
       traces: 3
       exception: 8
       resource: 5
+      scenario_db: 2
+      workloads: 1
     logs:
       color: true
       level: DEBUG
+    scenario:
+      syncDuration: 30 #seconds
   ports:
   - port: 80
     protocol: TCP
