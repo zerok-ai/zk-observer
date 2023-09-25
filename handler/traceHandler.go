@@ -178,11 +178,15 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 					logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
 				spanExceptionDetails := model.SpanDetailsException{
-					Hash:    hash,
-					Type:    exceptionDetails.Type,
-					Message: exceptionDetails.Message,
+					Hash:          hash,
+					ExceptionType: exceptionDetails.Type,
+					Message:       exceptionDetails.Message,
+					ErrorType:     "exception",
 				}
-				spanDetail.Exception = &spanExceptionDetails
+				if len(spanDetail.Errors) == 0 {
+					spanDetail.Errors = []interface{}{}
+				}
+				spanDetail.Errors = append(spanDetail.Errors, spanExceptionDetails)
 			}
 		}
 	}
@@ -201,7 +205,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 	}
 
 	spanDetail.StartNs = span.StartTimeUnixNano
-	spanDetail.EndNs = span.EndTimeUnixNano
+	spanDetail.LatencyNs = span.EndTimeUnixNano - span.StartTimeUnixNano
 
 	return spanDetail
 }

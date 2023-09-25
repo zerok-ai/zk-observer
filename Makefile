@@ -2,7 +2,7 @@ LOCATION = us-west1
 PROJECT_ID = zerok-dev
 REPOSITORY = stage
 
-VERSION = dev
+VERSION = devclient04
 IMAGE = zk-otlp-receiver
 ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
