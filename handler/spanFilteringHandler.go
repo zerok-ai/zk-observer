@@ -13,6 +13,8 @@ import (
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
 	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"math/rand"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -114,7 +116,12 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		workloadId := workLoadTraceId.WorkLoadId
 		traceId := workLoadTraceId.TraceId
 
-		redisKey := workloadId + "_" + h.getCurrentSuffix()
+		suffix, err := h.getCurrentSuffix()
+		if err != nil {
+			logger.Error(spanFilteringLogTag, "Error while getting suffix for workloadId ", workloadId)
+			return true
+		}
+		redisKey := workloadId + "_" + suffix
 		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
 		logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
 		h.pipeline.SAdd(h.ctx, redisKey, traceId)
@@ -163,10 +170,21 @@ func (h *SpanFilteringHandler) shutdown() {
 	}
 }
 
-func (h *SpanFilteringHandler) getCurrentSuffix() string {
-	//TODO: Confirm with Avin, if this is okay for getting the key.
-	randomNumber := rand.Intn(11)
-	return fmt.Sprintf("%v", randomNumber)
+func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
+
+	currentTime := time.Now()
+	timeFormatted := currentTime.Format("15:04")
+
+	timeParts := strings.Split(timeFormatted, ":")
+	minutesPart := timeParts[1]
+
+	minutes, err := strconv.Atoi(minutesPart)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+	suffix := minutes / 5
+	return fmt.Sprintf("%v", suffix), nil
 }
 
 func (h *SpanFilteringHandler) getRandomNumber() string {
