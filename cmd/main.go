@@ -1,41 +1,18 @@
 package main
 
 import (
-	"context"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
 	"net"
 )
 
 var mainLogTag = "main"
-
-type grpcServer struct {
-	pb.UnimplementedTraceServiceServer
-	traceHandler *handler.TraceHandler
-}
-
-func (s *grpcServer) Export(context context.Context, req *pb.ExportTraceServiceRequest) (*pb.ExportTraceServiceResponse, error) {
-	logger.Debug(mainLogTag, "Export method invoked.")
-	peer, ok := peer.FromContext(context)
-	remoteAddr := ""
-	if ok {
-		remoteAddr = peer.Addr.String()
-		remoteAddr = utils.GetClientIP(remoteAddr)
-	}
-	s.traceHandler.ProcessTraceData(req.ResourceSpans, remoteAddr)
-	err := s.traceHandler.PushDataToRedis()
-	if err != nil {
-		logger.Error(mainLogTag, "Error while pushing data to redis ", err)
-	}
-	return &pb.ExportTraceServiceResponse{}, nil
-}
 
 func main() {
 
@@ -64,7 +41,7 @@ func main() {
 		return
 	}
 	s := grpc.NewServer()
-	pb.RegisterTraceServiceServer(s, &grpcServer{traceHandler: traceHandler})
+	pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
 	go s.Serve(listener)
 
 	logger.Debug(mainLogTag, "Started grpc server.")
