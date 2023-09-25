@@ -9,4 +9,4 @@ kind: Kustomization
 images:
 - name: zk-otlp-receiver
   newName: us-west1-docker.pkg.dev/zerok-dev/stage/zk-otlp-receiver
-  newTag: dev
+  newTag: devclient04

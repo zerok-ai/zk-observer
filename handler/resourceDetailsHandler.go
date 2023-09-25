@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -33,26 +34,27 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandl
 	return &handler, nil
 }
 
-func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetails *model.SpanDetails, attrMap map[string]interface{}) error {
+func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetails map[string]interface{}, attrMap map[string]interface{}) error {
 	if spanDetails == nil {
 		return fmt.Errorf("spanDetails are nil")
 	}
 	if len(attrMap) > 0 {
 		resourceIp := ""
-		if spanDetails.SpanKind == model.SpanKindClient {
-			resourceIp = spanDetails.SourceIP
-		} else if spanDetails.SpanKind == model.SpanKindServer {
-			resourceIp = spanDetails.DestIP
+		spanKindStr, ok := spanDetails[common.SpanKindKey].(string)
+		if ok && spanKindStr == string(model.SpanKindClient) {
+			resourceIp = spanDetails[common.SourceIpKey].(string)
+		} else if ok && spanKindStr == string(model.SpanKindServer) {
+			resourceIp = spanDetails[common.DestIpKey].(string)
 		} else {
 			//No need to save resource details.
-			logger.Debug(resourceLogTag, "Skipping saving resource data for spanKind ", spanDetails.SpanKind)
+			logger.Debug(resourceLogTag, "Skipping saving resource data for spanKind ", spanKindStr)
 			return nil
 		}
 		if len(resourceIp) == 0 {
-			logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanDetails.SpanKind)
+			logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanKindStr)
 			return nil
 		}
-		_, ok := th.existingResourceData.Load(resourceIp)
+		_, ok = th.existingResourceData.Load(resourceIp)
 		if !ok {
 			resourceAttrJSON, err := json.Marshal(attrMap)
 			if err != nil {

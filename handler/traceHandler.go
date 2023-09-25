@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -97,7 +97,7 @@ func (th *TraceHandler) pushDataToRedis() error {
 
 	th.traceStore.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
-		spanDetails := value.(*model.SpanDetails)
+		spanDetails := value.(map[string]interface{})
 		//Split keyStr using delimiter.
 		ids := strings.Split(keyStr, delimiter)
 		if len(ids) == 2 {
@@ -122,8 +122,8 @@ func (th *TraceHandler) pushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris.Context) []*model.SpanDetails {
-	var spanDetails []*model.SpanDetails
+func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris.Context) []map[string]interface{} {
+	var spanDetails []map[string]interface{}
 
 	for _, resourceSpans := range traceData.ResourceSpans {
 		resourceAttrMap := map[string]interface{}{}
@@ -140,13 +140,13 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 				spanDetails := th.createSpanDetails(span, ctx)
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
-				th.spanFilteringHandler.FilterSpans(&spanDetails, traceId)
+				th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
 				th.traceStore.Store(key, spanDetails)
 
-				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
+				err := th.resourceDetailsHandler.SyncResourceData(spanId, spanDetails, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 					return nil
@@ -157,13 +157,15 @@ func (th *TraceHandler) processTraceData(traceData *tracev1.TracesData, ctx iris
 	return spanDetails
 }
 
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) model.SpanDetails {
-	spanDetail := model.SpanDetails{}
-	spanDetail.ParentSpanID = hex.EncodeToString(span.ParentSpanId)
-	if len(spanDetail.ParentSpanID) == 0 {
-		spanDetail.ParentSpanID = "0000000000000000"
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) map[string]interface{} {
+	spanDetail := map[string]interface{}{}
+	parentSpanId := hex.EncodeToString(span.ParentSpanId)
+	if len(parentSpanId) == 0 {
+		parentSpanId = "0000000000000000"
 	}
-	spanDetail.SpanKind = utils.GetSpanKind(span.Kind)
+	spanDetail[common.ParentSpanIdKey] = parentSpanId
+	spanKind := utils.GetSpanKind(span.Kind)
+	spanDetail[common.SpanKindKey] = spanKind
 
 	attrMap := utils.ConvertKVListToMap(span.Attributes)
 
@@ -177,35 +179,37 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, ctx iris.Context) 
 				if err != nil {
 					logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 				}
-				spanExceptionDetails := model.SpanDetailsException{
-					Hash:          hash,
-					ExceptionType: exceptionDetails.Type,
-					Message:       exceptionDetails.Message,
-					ErrorType:     "exception",
+				spanExceptionDetails := map[string]interface{}{}
+				spanExceptionDetails["error_type"] = "exception"
+				spanExceptionDetails["hash"] = hash
+				spanExceptionDetails["exception_type"] = exceptionDetails.Type
+				spanExceptionDetails["message"] = exceptionDetails.Message
+
+				existingErrorDetails, ok := spanDetail["errors"].([]map[string]interface{})
+				if !ok {
+					existingErrorDetails = []map[string]interface{}{}
 				}
-				if len(spanDetail.Errors) == 0 {
-					spanDetail.Errors = []interface{}{}
-				}
-				spanDetail.Errors = append(spanDetail.Errors, spanExceptionDetails)
+				existingErrorDetails = append(existingErrorDetails, spanExceptionDetails)
+				spanDetail["errors"] = existingErrorDetails
 			}
 		}
 	}
 
 	if th.otlpConfig.SetSpanAttributes {
-		spanDetail.Attributes = attrMap
+		spanDetail[common.AttributesKey] = attrMap
 	}
 
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, ctx)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, ctx)
 
 	if len(sourceIp) > 0 {
-		spanDetail.SourceIP = sourceIp
+		spanDetail[common.SourceIpKey] = sourceIp
 	}
 	if len(destIp) > 0 {
-		spanDetail.DestIP = destIp
+		spanDetail[common.DestIpKey] = destIp
 	}
 
-	spanDetail.StartNs = span.StartTimeUnixNano
-	spanDetail.LatencyNs = span.EndTimeUnixNano - span.StartTimeUnixNano
+	spanDetail[common.StartNsKey] = span.StartTimeUnixNano
+	spanDetail[common.LatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
 
 	return spanDetail
 }

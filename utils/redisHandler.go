@@ -11,7 +11,7 @@ import (
 var redisHandlerLogTag = "RedisHandler"
 
 type RedisHandler struct {
-	redisClient *redis.Client
+	RedisClient *redis.Client
 	ctx         context.Context
 	config      *zkconfig.RedisConfig
 	dbName      string
@@ -43,7 +43,7 @@ func (h *RedisHandler) InitializeRedisConn() error {
 	}
 	redisClient := redis.NewClient(opt)
 
-	h.redisClient = redisClient
+	h.RedisClient = redisClient
 	err := h.PingRedis()
 	if err != nil {
 		return err
@@ -52,17 +52,17 @@ func (h *RedisHandler) InitializeRedisConn() error {
 }
 
 func (h *RedisHandler) Set(key string, value interface{}) error {
-	statusCmd := h.redisClient.Set(h.ctx, key, value, 0)
+	statusCmd := h.RedisClient.Set(h.ctx, key, value, 0)
 	return statusCmd.Err()
 }
 
 func (h *RedisHandler) SetNX(key string, value interface{}) error {
-	statusCmd := h.redisClient.SetNX(h.ctx, key, value, 0)
+	statusCmd := h.RedisClient.SetNX(h.ctx, key, value, 0)
 	return statusCmd.Err()
 }
 
 func (h *RedisHandler) PingRedis() error {
-	redisClient := h.redisClient
+	redisClient := h.RedisClient
 	if redisClient == nil {
 		logger.Error(redisHandlerLogTag, "Redis client is nil.")
 		return fmt.Errorf("redis client is nil")
@@ -93,5 +93,5 @@ func (h *RedisHandler) CheckRedisConnection() error {
 }
 
 func (h *RedisHandler) CloseConnection() error {
-	return h.redisClient.Close()
+	return h.RedisClient.Close()
 }

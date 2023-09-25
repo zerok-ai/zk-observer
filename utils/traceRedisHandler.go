@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"time"
@@ -38,7 +37,7 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 		startTime:    time.Now(),
 	}
 
-	handler.pipeline = handler.redisHandler.redisClient.Pipeline()
+	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
 
 	timerDuration := time.Duration(otlpConfig.Traces.TimerDuration) * time.Millisecond
 	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
@@ -62,7 +61,7 @@ func (h *TraceRedisHandler) syncPipeline() {
 	}
 }
 
-func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails *model.SpanDetails) error {
+func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails map[string]interface{}) error {
 
 	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {

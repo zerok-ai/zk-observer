@@ -6,7 +6,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
@@ -57,20 +56,18 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.ruleEvaluator = evaluator.NewRuleEvaluator()
 	handler.workloadDetails = sync.Map{}
 	handler.ctx = context.Background()
+	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(spanDetails *model.SpanDetails, traceId string) {
-	//filteredWorkloadIds := []string{}
+func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, traceId string) {
 	scenarios := h.VersionedStore.GetAllValues()
-	//logger.Debug(spanFilteringLogTag, "Reached FilterSpans method.")
 	for _, scenario := range scenarios {
-		//logger.Debug(spanFilteringLogTag, "Checking for scenario ", scenario.Title)
 		//Getting workloads and iterate over them
 		workloads := scenario.Workloads
 		for id, workload := range *workloads {
 			rule := workload.Rule
-			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails.Attributes)
+			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
 			if err != nil {
 				continue
 			}
