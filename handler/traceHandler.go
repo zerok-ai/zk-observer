@@ -81,8 +81,7 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 	}
 
 	resourceSpans := traceData.ResourceSpans
-	remoteAddr := utils.GetClientIP(ctx.Request().RemoteAddr)
-	th.ProcessTraceData(resourceSpans, remoteAddr)
+	th.ProcessTraceData(resourceSpans)
 	err = th.PushDataToRedis()
 	if err != nil {
 		logger.Error(traceLogTag, "Error while pushing data to redis ", err)
@@ -124,7 +123,7 @@ func (th *TraceHandler) PushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans, remoteAddr string) []map[string]interface{} {
+func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) []map[string]interface{} {
 	var spanDetails []map[string]interface{}
 	if len(resourceSpans) == 0 {
 		return spanDetails
@@ -142,7 +141,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans,
 				logger.Debug(traceLogTag, "spanKind", span.Kind)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
-				spanDetails := th.createSpanDetails(span, remoteAddr)
+				spanDetails := th.createSpanDetails(span)
 				spanDetails["schema_url"] = schemaUrl
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
@@ -163,7 +162,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans,
 	return spanDetails
 }
 
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span, remoteAddr string) map[string]interface{} {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span) map[string]interface{} {
 	spanDetail := map[string]interface{}{}
 	parentSpanId := hex.EncodeToString(span.ParentSpanId)
 	if len(parentSpanId) == 0 {
@@ -206,7 +205,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, remoteAddr string)
 		spanDetail[common.AttributesKey] = attrMap
 	}
 
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, remoteAddr)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap)
 
 	if len(sourceIp) > 0 {
 		spanDetail[common.SourceIpKey] = sourceIp

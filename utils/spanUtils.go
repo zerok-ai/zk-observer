@@ -24,13 +24,12 @@ func GetClientIP(remoteAddr string) string {
 	return host
 }
 
-func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, remoteAddr string) (string, string) {
+func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}) (string, string) {
 	destIP := ""
 	sourceIP := ""
 
 	if spanKind == model.SpanKindClient {
 		if len(attributes) > 0 {
-			sourceIP = remoteAddr
 			logger.Debug(spanUtilsLogTag, "Source Ip for client span  is ", sourceIP)
 			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
 				destIP = peerAddr.(string)
@@ -78,7 +77,6 @@ func ConvertToIpv4(ipStr string) string {
 
 	if ip.To4() != nil {
 		ipv4 := ip.String()
-		fmt.Printf("IPv4 Format: %s\n", ipv4)
 		return ipv4
 	}
 	return ""
