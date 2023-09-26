@@ -67,13 +67,14 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, traceId string) {
+func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, traceId string) []string {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "Recovered from panic: ", r)
 		}
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
+	satisfiedWorkLoadIds := []string{}
 	for _, scenario := range scenarios {
 		if scenario == nil {
 			//logger.Debug(spanFilteringLogTag, "No scenario found")
@@ -100,6 +101,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 				currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 				key := currentTime + "_" + h.getRandomNumber() + "_" + id
 				h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
+				satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, id)
 			}
 		}
 	}
@@ -107,6 +109,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 	if err != nil {
 		logger.Error(spanFilteringLogTag, "Error while syncing workload data to redis pipeline ", err)
 	}
+	return satisfiedWorkLoadIds
 }
 
 func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {

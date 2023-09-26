@@ -144,7 +144,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetails["schema_url"] = schemaUrl
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
-				th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
+				workloadIds := th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
+				spanDetails[common.SatisfiedWorkloadIdsKey] = workloadIds
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
