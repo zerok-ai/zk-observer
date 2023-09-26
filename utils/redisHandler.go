@@ -104,13 +104,7 @@ func (h *RedisHandler) HMSetPipeline(key string, value map[string]interface{}, e
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	cmd = h.Pipeline.Expire(h.ctx, key, expiration)
-	if cmd.Err() != nil {
-		return cmd.Err()
-	}
-	h.count++
-	h.syncPipeline()
-	return nil
+	return h.setExpiryAndSync(key, expiration)
 }
 
 func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration time.Duration) error {
@@ -118,13 +112,7 @@ func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration t
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	cmd = h.Pipeline.Expire(h.ctx, key, expiration)
-	if cmd.Err() != nil {
-		return cmd.Err()
-	}
-	h.count++
-	h.syncPipeline()
-	return nil
+	return h.setExpiryAndSync(key, expiration)
 }
 
 func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration time.Duration) error {
@@ -132,8 +120,12 @@ func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration ti
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	cmd2 := h.Pipeline.Expire(h.ctx, key, expiration)
-	if cmd2.Err() != nil {
+	return h.setExpiryAndSync(key, expiration)
+}
+
+func (h *RedisHandler) setExpiryAndSync(key string, expiration time.Duration) error {
+	cmd := h.Pipeline.Expire(h.ctx, key, expiration)
+	if cmd.Err() != nil {
 		return cmd.Err()
 	}
 	h.count++
