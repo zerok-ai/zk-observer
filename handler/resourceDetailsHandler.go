@@ -3,11 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	zktick "github.com/zerok-ai/zk-utils-go/ticker"
+	"strings"
 	"sync"
 )
 
@@ -18,6 +21,8 @@ type ResourceDetailsHandler struct {
 	redisHandler         *utils.RedisHandler
 	existingResourceData sync.Map
 	otlpConfig           *config.OtlpConfig
+	pipeline             *redis.Pipeline
+	ticker               *zktick.TickerTask
 }
 
 func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandler, error) {
@@ -70,12 +75,11 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInp
 		}
 		existingValue, ok := th.existingResourceData.Load(resourceIp)
 		if !ok {
-			resourceAttrJSON, err := json.Marshal(attrMap)
-			if err != nil {
-				logger.Error(resourceLogTag, "Error encoding resource details for spanID %s: %v\n", spanId, err)
-				return err
-			}
-			err = th.redisHandler.SetNX(resourceIp, resourceAttrJSON)
+			filters := []string{"service", "telemetry"}
+			filteredResourceData := th.FilterResourceData(filters, attrMap)
+			logger.Debug(resourceLogTag, "Resource data is ", filteredResourceData)
+			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
+			err := th.redisHandler.HSet(resourceIp, filteredResourceData)
 			if err != nil {
 				logger.Error(resourceLogTag, "Error while saving resource to redis for span Id ", spanId, " with error ", err)
 				return err
@@ -85,4 +89,28 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInp
 		logger.Debug(resourceLogTag, "Existing resource attrMap is ", existingValue)
 	}
 	return nil
+}
+
+func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) []string {
+	finalArr := []string{}
+
+	for _, filter := range filters {
+		tempMap := map[string]interface{}{}
+		count := 0
+		for key, value := range attrMap {
+			if strings.HasPrefix(key, filter) {
+				tempMap[key] = value
+				count++
+			}
+		}
+		if count > 0 {
+			tempMapJSON, err := json.Marshal(tempMap)
+			if err != nil {
+				logger.Error(resourceLogTag, "Error encoding resource details: %v\n", err)
+				continue
+			}
+			finalArr = append(finalArr, filter, string(tempMapJSON))
+		}
+	}
+	return finalArr
 }

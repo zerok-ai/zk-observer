@@ -46,6 +46,7 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 				logger.Error(exceptionLogTag, "Error encoding exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
+			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
 			err = th.redisHandler.SetNX(hash, exceptionJSON)
 			if err != nil {
 				logger.Error(exceptionLogTag, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
