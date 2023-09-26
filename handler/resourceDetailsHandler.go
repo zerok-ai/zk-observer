@@ -85,7 +85,7 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]
 				logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 				return err
 			}
-			th.existingResourceData.Store(resourceIp, attrMap)
+			th.existingResourceData.Store(resourceIp, filteredResourceData)
 		}
 		logger.Debug(resourceLogTag, "Existing resource attrMap is ", existingValue)
 	}
