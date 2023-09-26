@@ -59,6 +59,11 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.workloadDetails = sync.Map{}
 	handler.ctx = context.Background()
 	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
+
+	timerDuration := time.Duration(cfg.Workloads.TimerDuration) * time.Millisecond
+	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
+	handler.ticker.Start()
+
 	return &handler, nil
 }
 
@@ -144,6 +149,7 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 }
 
 func (h *SpanFilteringHandler) syncPipeline() {
+	logger.Debug(spanFilteringLogTag, "Reached sync pipeline method.")
 	syncDuration := time.Duration(h.Cfg.Workloads.SyncDuration) * time.Millisecond
 	if h.count > h.Cfg.Workloads.BatchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.pipeline.Exec(h.ctx)
