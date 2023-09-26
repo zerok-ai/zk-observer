@@ -191,7 +191,7 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 
 	minutes, err := strconv.Atoi(minutesPart)
 	if err != nil {
-		fmt.Println("Error:", err)
+		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
 		return "", err
 	}
 	suffix := minutes / 5

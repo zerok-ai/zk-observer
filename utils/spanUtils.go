@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
@@ -71,7 +70,7 @@ func ConvertToIpv4(ipStr string) string {
 	ip := net.ParseIP(ipStr)
 
 	if ip == nil {
-		fmt.Println("Invalid IP address")
+		logger.Error(spanUtilsLogTag, "Invalid IP address ", ipStr)
 		return ""
 	}
 
@@ -112,7 +111,7 @@ func GetAnyValue(value *commonv1.AnyValue) interface{} {
 	case *commonv1.AnyValue_IntValue:
 		return v.IntValue
 	default:
-		fmt.Println("Variable has an unknown type.")
+		logger.Debug(spanUtilsLogTag, "Unknown type ", v)
 	}
 	return nil
 }
