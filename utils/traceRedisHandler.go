@@ -76,7 +76,7 @@ func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDeta
 	spanJsonMap[spanId] = string(spanJSON)
 
 	ctx := context.Background()
-	logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
+	//logger.Debug(traceRedisHandlerLogTag, "Len of redis pipeline ", h.pipeline.Len())
 	h.pipeline.HMSet(ctx, traceId, spanJsonMap)
 	h.pipeline.Expire(ctx, traceId, time.Duration(h.config.Traces.Ttl)*time.Second)
 	h.count++

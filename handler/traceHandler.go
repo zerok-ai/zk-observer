@@ -138,8 +138,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
-				logger.Debug(traceLogTag, "spanKind", span.Kind)
-				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
+				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span)
 				spanDetails["schema_url"] = schemaUrl
@@ -151,7 +150,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				key := traceId + delimiter + spanId
 				th.traceStore.Store(key, spanDetails)
 
-				err := th.resourceDetailsHandler.SyncResourceData(spanId, spanDetails, resourceAttrMap)
+				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 					return nil
@@ -174,7 +173,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) map[string]interfa
 
 	attrMap := utils.ConvertKVListToMap(span.Attributes)
 
-	logger.Debug(traceLogTag, "Attribute values ", attrMap)
+	//logger.Debug(traceLogTag, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {

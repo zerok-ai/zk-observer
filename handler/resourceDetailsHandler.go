@@ -34,17 +34,31 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandl
 	return &handler, nil
 }
 
-func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetails map[string]interface{}, attrMap map[string]interface{}) error {
-	if spanDetails == nil {
+func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
+	if spanDetailsInput == nil {
 		return fmt.Errorf("spanDetails are nil")
 	}
+	spanDetails := *spanDetailsInput
+	//logger.Debug(spanFilteringLogTag, "Span details are: ", spanDetails)
 	if len(attrMap) > 0 {
 		resourceIp := ""
-		spanKindStr, ok := spanDetails[common.SpanKindKey].(string)
-		if ok && spanKindStr == string(model.SpanKindClient) {
-			resourceIp = spanDetails[common.SourceIpKey].(string)
-		} else if ok && spanKindStr == string(model.SpanKindServer) {
-			resourceIp = spanDetails[common.DestIpKey].(string)
+		spanKindStr, ok := spanDetails[common.SpanKindKey].(model.SpanKind)
+		if ok && spanKindStr == model.SpanKindClient {
+			sourceIp := spanDetails[common.SourceIpKey]
+			if sourceIp != nil {
+				sourceIpStr, ok := sourceIp.(string)
+				if ok {
+					resourceIp = sourceIpStr
+				}
+			}
+		} else if ok && spanKindStr == model.SpanKindServer {
+			destIp := spanDetails[common.DestIpKey]
+			if destIp != nil {
+				destIpStr, ok := destIp.(string)
+				if ok {
+					resourceIp = destIpStr
+				}
+			}
 		} else {
 			//No need to save resource details.
 			logger.Debug(resourceLogTag, "Skipping saving resource data for spanKind ", spanKindStr)
@@ -54,7 +68,7 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetails ma
 			logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanKindStr)
 			return nil
 		}
-		_, ok = th.existingResourceData.Load(resourceIp)
+		existingValue, ok := th.existingResourceData.Load(resourceIp)
 		if !ok {
 			resourceAttrJSON, err := json.Marshal(attrMap)
 			if err != nil {
@@ -66,8 +80,9 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetails ma
 				logger.Error(resourceLogTag, "Error while saving resource to redis for span Id ", spanId, " with error ", err)
 				return err
 			}
-			th.existingResourceData.Store(resourceIp, true)
+			th.existingResourceData.Store(resourceIp, attrMap)
 		}
+		logger.Debug(resourceLogTag, "Existing resource attrMap is ", existingValue)
 	}
 	return nil
 }

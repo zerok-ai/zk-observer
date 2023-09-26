@@ -73,14 +73,11 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			logger.Error(spanFilteringLogTag, "Recovered from panic: ", r)
 		}
 	}()
-	logger.Debug(spanFilteringLogTag, "Span details are: ", spanDetails)
 	scenarios := h.VersionedStore.GetAllValues()
 	for _, scenario := range scenarios {
 		if scenario == nil {
-			logger.Debug(spanFilteringLogTag, "No scenario found")
+			//logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
-		} else {
-			logger.Debug(spanFilteringLogTag, "Scenario found: ", scenario.Id)
 		}
 		//Getting workloads and iterate over them
 		workloads := scenario.Workloads
@@ -93,7 +90,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 				continue
 			}
 			rule := workload.Rule
-			logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
+			//logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
 			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
 			if err != nil {
 				continue
@@ -133,7 +130,7 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		}
 		redisKey := workloadId + "_" + suffix
 		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
-		logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
+		//logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
 		h.pipeline.SAdd(h.ctx, redisKey, traceId)
 		h.pipeline.Expire(h.ctx, redisKey, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
 		h.count++
