@@ -6,17 +6,15 @@ import (
 )
 
 type TraceConfig struct {
-	SyncDuration  int `yaml:"syncDuration"`
-	TimerDuration int `yaml:"timerDuration"`
-	BatchSize     int `yaml:"batchSize"`
-	Ttl           int `yaml:"ttl"`
+	SyncDuration int `yaml:"syncDuration"`
+	BatchSize    int `yaml:"batchSize"`
+	Ttl          int `yaml:"ttl"`
 }
 
 type WorkloadConfig struct {
-	SyncDuration  int `yaml:"syncDuration"`
-	TimerDuration int `yaml:"timerDuration"`
-	BatchSize     int `yaml:"batchSize"`
-	Ttl           int `yaml:"ttl"`
+	SyncDuration int `yaml:"syncDuration"`
+	BatchSize    int `yaml:"batchSize"`
+	Ttl          int `yaml:"ttl"`
 }
 
 type ScenarioConfig struct {

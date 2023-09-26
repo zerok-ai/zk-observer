@@ -60,7 +60,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.ctx = context.Background()
 	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
 
-	timerDuration := time.Duration(cfg.Workloads.TimerDuration) * time.Millisecond
+	timerDuration := time.Duration(cfg.Workloads.SyncDuration) * time.Millisecond
 	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
 	handler.ticker.Start()
 

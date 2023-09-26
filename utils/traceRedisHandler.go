@@ -39,7 +39,7 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 
 	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
 
-	timerDuration := time.Duration(otlpConfig.Traces.TimerDuration) * time.Millisecond
+	timerDuration := time.Duration(otlpConfig.Traces.SyncDuration) * time.Millisecond
 	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
 	handler.ticker.Start()
 

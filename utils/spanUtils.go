@@ -13,6 +13,8 @@ var spanUtilsLogTag = "spanUtils"
 var NET_SOCK_HOST_ADDR = "net.sock.host.addr"
 var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
 var NET_PEER_NAME = "net.peer.name"
+var NET_HOST_IP = "net.host.ip"
+var NET_PEER_IP = "net.peer.ip"
 
 func GetClientIP(remoteAddr string) string {
 	host, _, err := net.SplitHostPort(remoteAddr)
@@ -43,14 +45,43 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 		if len(attributes) > 0 {
 			if hostAddr, ok := attributes[NET_SOCK_HOST_ADDR]; ok {
 				destIP = hostAddr.(string)
+			} else if hostAddr, ok := attributes[NET_HOST_IP]; ok {
+				destIP = hostAddr.(string)
 			}
+
 			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
+				sourceIP = peerAddr.(string)
+			} else if peerAddr, ok := attributes[NET_PEER_IP]; ok {
 				sourceIP = peerAddr.(string)
 			}
 		}
 	}
 
+	if len(destIP) > 0 {
+		destIP = ConvertToIpv4(destIP)
+	}
+
+	if len(sourceIP) > 0 {
+		sourceIP = ConvertToIpv4(sourceIP)
+	}
+
 	return sourceIP, destIP
+}
+
+func ConvertToIpv4(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+
+	if ip == nil {
+		fmt.Println("Invalid IP address")
+		return ""
+	}
+
+	if ip.To4() != nil {
+		ipv4 := ip.String()
+		fmt.Printf("IPv4 Format: %s\n", ipv4)
+		return ipv4
+	}
+	return ""
 }
 
 func ConvertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
