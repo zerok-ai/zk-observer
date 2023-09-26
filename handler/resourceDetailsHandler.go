@@ -3,13 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"strings"
 	"sync"
 )
@@ -21,13 +19,11 @@ type ResourceDetailsHandler struct {
 	redisHandler         *utils.RedisHandler
 	existingResourceData sync.Map
 	otlpConfig           *config.OtlpConfig
-	pipeline             *redis.Pipeline
-	ticker               *zktick.TickerTask
 }
 
 func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandler, error) {
 	handler := ResourceDetailsHandler{}
-	redisHandler, err := utils.NewRedisHandler(&config.Redis, resourceDbName)
+	redisHandler, err := utils.NewRedisHandler(&config.Redis, resourceDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err
@@ -39,9 +35,14 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandl
 	return &handler, nil
 }
 
-func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
+func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
 	if spanDetailsInput == nil {
 		return fmt.Errorf("spanDetails are nil")
+	}
+	err := th.redisHandler.CheckRedisConnection()
+	if err != nil {
+		logger.Error(resourceLogTag, "Error while checking redis conn ", err)
+		return err
 	}
 	spanDetails := *spanDetailsInput
 	//logger.Debug(spanFilteringLogTag, "Span details are: ", spanDetails)
@@ -79,9 +80,9 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInp
 			filteredResourceData := th.FilterResourceData(filters, attrMap)
 			logger.Debug(resourceLogTag, "Resource data is ", filteredResourceData)
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err := th.redisHandler.HSet(resourceIp, filteredResourceData)
+			err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
 			if err != nil {
-				logger.Error(resourceLogTag, "Error while saving resource to redis for span Id ", spanId, " with error ", err)
+				logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 				return err
 			}
 			th.existingResourceData.Store(resourceIp, attrMap)
@@ -91,8 +92,8 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanId string, spanDetailsInp
 	return nil
 }
 
-func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) []string {
-	finalArr := []string{}
+func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]interface{} {
+	finalMap := map[string]interface{}{}
 
 	for _, filter := range filters {
 		tempMap := map[string]interface{}{}
@@ -109,8 +110,8 @@ func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap m
 				logger.Error(resourceLogTag, "Error encoding resource details: %v\n", err)
 				continue
 			}
-			finalArr = append(finalArr, filter, string(tempMapJSON))
+			finalMap[filter] = string(tempMapJSON)
 		}
 	}
-	return finalArr
+	return finalMap
 }

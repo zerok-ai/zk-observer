@@ -151,7 +151,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				key := traceId + delimiter + spanId
 				th.traceStore.Store(key, spanDetails)
 
-				err := th.resourceDetailsHandler.SyncResourceData(spanId, &spanDetails, resourceAttrMap)
+				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 					return nil

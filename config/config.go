@@ -5,6 +5,16 @@ import (
 	zkconfig "github.com/zerok-ai/zk-utils-go/storage/redis/config"
 )
 
+type ExceptionConfig struct {
+	SyncDuration int `yaml:"syncDuration"`
+	BatchSize    int `yaml:"batchSize"`
+}
+
+type ResourceConfig struct {
+	SyncDuration int `yaml:"syncDuration"`
+	BatchSize    int `yaml:"batchSize"`
+}
+
 type TraceConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 	BatchSize    int `yaml:"batchSize"`
@@ -30,6 +40,8 @@ type OtlpConfig struct {
 	Traces            TraceConfig           `yaml:"traces"`
 	Workloads         WorkloadConfig        `yaml:"workloads"`
 	Scenario          ScenarioConfig        `yaml:"scenario"`
+	Exception         ExceptionConfig       `yaml:"exceptions"`
+	Resources         ResourceConfig        `yaml:"resources"`
 }
 
 func CreateConfig() *OtlpConfig {

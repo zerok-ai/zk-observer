@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -11,7 +10,6 @@ import (
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
-	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -28,10 +26,6 @@ type SpanFilteringHandler struct {
 	redisHandler    *utils.RedisHandler
 	workloadDetails sync.Map
 	ctx             context.Context
-	ticker          *zktick.TickerTask
-	count           int
-	startTime       time.Time
-	pipeline        redis.Pipeliner
 }
 
 type WorkLoadTraceId struct {
@@ -46,7 +40,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	if err != nil {
 		return nil, err
 	}
-	redisHandler, err := utils.NewRedisHandler(&cfg.Redis, common.WorkloadSpanDbName)
+	redisHandler, err := utils.NewRedisHandler(&cfg.Redis, common.WorkloadSpanDbName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, spanFilteringLogTag)
 	if err != nil {
 		logger.Error(spanFilteringLogTag, "Error while creating workload redis handler:", err)
 		return nil, err
@@ -58,11 +52,6 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler.ruleEvaluator = evaluator.NewRuleEvaluator()
 	handler.workloadDetails = sync.Map{}
 	handler.ctx = context.Background()
-	handler.pipeline = handler.redisHandler.RedisClient.Pipeline()
-
-	timerDuration := time.Duration(cfg.Workloads.SyncDuration) * time.Millisecond
-	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
-	handler.ticker.Start()
 
 	return &handler, nil
 }
@@ -134,51 +123,19 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		redisKey := workloadId + "_" + suffix
 		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
 		//logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
-		h.pipeline.SAdd(h.ctx, redisKey, traceId)
-		h.pipeline.Expire(h.ctx, redisKey, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
-		h.count++
+		err = h.redisHandler.SAddPipeline(redisKey, traceId, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
+		if err != nil {
+			logger.Error(spanFilteringLogTag, "Error while setting workload data: ", err)
+			return true
+		}
 		keysToDelete = append(keysToDelete, keyStr)
 		return true
 	})
-	h.syncPipeline()
 	// Delete the keys from the sync.Map after the iteration
 	for _, key := range keysToDelete {
 		h.workloadDetails.Delete(key)
 	}
 	return nil
-}
-
-func (h *SpanFilteringHandler) syncPipeline() {
-	logger.Debug(spanFilteringLogTag, "Reached sync pipeline method.")
-	syncDuration := time.Duration(h.Cfg.Workloads.SyncDuration) * time.Millisecond
-	if h.count > h.Cfg.Workloads.BatchSize || time.Since(h.startTime) >= syncDuration {
-		_, err := h.pipeline.Exec(h.ctx)
-		if err != nil {
-			logger.Error(spanFilteringLogTag, "Error while syncing data to redis ", err)
-			return
-		}
-		logger.Debug(spanFilteringLogTag, "Pipeline synchronized on batchsize/syncDuration")
-
-		h.count = 0
-		h.startTime = time.Now()
-	}
-}
-
-func (h *SpanFilteringHandler) forceSync() {
-	_, err := h.pipeline.Exec(h.ctx)
-	if err != nil {
-		logger.Error(spanFilteringLogTag, "Error while force syncing data to redis ", err)
-		return
-	}
-}
-
-func (h *SpanFilteringHandler) shutdown() {
-	h.forceSync()
-	err := h.redisHandler.CloseConnection()
-	if err != nil {
-		logger.Error(spanFilteringLogTag, "Error while closing redis conn.")
-		return
-	}
 }
 
 func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {

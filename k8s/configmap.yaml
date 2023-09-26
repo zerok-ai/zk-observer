@@ -12,6 +12,12 @@ data:
       syncDuration: 10000 #millis
       batchSize: 30
       ttl: 1800
+    resources:
+      syncDuration: 10000 #millis
+      batchSize: 30
+    exceptions:
+      syncDuration: 10000 #millis
+      batchSize: 30
     redis:
      port: 6379
      dbs:

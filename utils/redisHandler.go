@@ -23,9 +23,10 @@ type RedisHandler struct {
 	startTime    time.Time
 	batchSize    int
 	syncInterval int
+	tag          string
 }
 
-func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInterval int, batchSize int) (*RedisHandler, error) {
+func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInterval int, batchSize int, tag string) (*RedisHandler, error) {
 	handler := &RedisHandler{
 		ctx:    context.Background(),
 		config: redisConfig,
@@ -46,6 +47,8 @@ func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInter
 
 	handler.syncInterval = syncInterval
 	handler.batchSize = batchSize
+	handler.ctx = context.Background()
+	handler.tag = tag
 
 	return handler, nil
 }
@@ -96,6 +99,48 @@ func (h *RedisHandler) PingRedis() error {
 	return nil
 }
 
+func (h *RedisHandler) HMSetPipeline(key string, value map[string]interface{}, expiration time.Duration) error {
+	cmd := h.Pipeline.HMSet(h.ctx, key, value)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	cmd = h.Pipeline.Expire(h.ctx, key, expiration)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	h.count++
+	h.syncPipeline()
+	return nil
+}
+
+func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration time.Duration) error {
+	cmd := h.Pipeline.SetNX(h.ctx, key, value, expiration)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	cmd = h.Pipeline.Expire(h.ctx, key, expiration)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	h.count++
+	h.syncPipeline()
+	return nil
+}
+
+func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration time.Duration) error {
+	cmd := h.Pipeline.SAdd(h.ctx, key, value)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	cmd2 := h.Pipeline.Expire(h.ctx, key, expiration)
+	if cmd2.Err() != nil {
+		return cmd.Err()
+	}
+	h.count++
+	h.syncPipeline()
+	return nil
+}
+
 func (h *RedisHandler) CheckRedisConnection() error {
 	err := h.PingRedis()
 	if err != nil {
@@ -119,10 +164,10 @@ func (h *RedisHandler) syncPipeline() {
 	if h.count > h.batchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.Pipeline.Exec(h.ctx)
 		if err != nil {
-			logger.Error(traceRedisHandlerLogTag, "Error while syncing data to redis ", err)
+			logger.Error(redisHandlerLogTag, "Error while syncing data to redis ", err)
 			return
 		}
-		logger.Debug(traceRedisHandlerLogTag, "Pipeline synchronized on batchsize/syncDuration")
+		logger.Debug(redisHandlerLogTag, "Pipeline synchronized on batchsize/syncDuration for tag ", h.tag)
 
 		h.count = 0
 		h.startTime = time.Now()
@@ -136,7 +181,7 @@ func (h *RedisHandler) CloseConnection() error {
 func (h *RedisHandler) forceSync() {
 	_, err := h.Pipeline.Exec(h.ctx)
 	if err != nil {
-		logger.Error(traceRedisHandlerLogTag, "Error while force syncing data to redis ", err)
+		logger.Error(redisHandlerLogTag, "Error while force syncing data to redis ", err)
 		return
 	}
 }
@@ -145,7 +190,7 @@ func (h *RedisHandler) shutdown() {
 	h.forceSync()
 	err := h.CloseConnection()
 	if err != nil {
-		logger.Error(traceRedisHandlerLogTag, "Error while closing redis conn.")
+		logger.Error(redisHandlerLogTag, "Error while closing redis conn.")
 		return
 	}
 }

@@ -23,7 +23,7 @@ type ExceptionHandler struct {
 
 func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionHandler, error) {
 	handler := ExceptionHandler{}
-	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, dbName)
+	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, dbName, config.Exception.SyncDuration, config.Exception.BatchSize, exceptionLogTag)
 	if err != nil {
 		logger.Error(exceptionLogTag, "Error while creating exception redis handler:", err)
 		return nil, err
@@ -38,6 +38,11 @@ func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionHandler, error) {
 func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
 	hash := ""
 	if len(exception.Stacktrace) > 0 {
+		err := th.redisHandler.CheckRedisConnection()
+		if err != nil {
+			logger.Error(exceptionLogTag, "Error while checking redis conn ", err)
+			return "", err
+		}
 		hash = zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
 		_, ok := th.existingExceptionData.Load(hash)
 		if !ok {
@@ -47,9 +52,9 @@ func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails,
 				return "", err
 			}
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err = th.redisHandler.SetNX(hash, exceptionJSON)
+			err = th.redisHandler.SetNXPipeline(hash, exceptionJSON, 0)
 			if err != nil {
-				logger.Error(exceptionLogTag, "Error while saving exception to redis for span Id ", spanId, " with error ", err)
+				logger.Error(exceptionLogTag, "Error while setting exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
 			th.existingExceptionData.Store(hash, true)
