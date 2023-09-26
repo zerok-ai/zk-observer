@@ -40,7 +40,7 @@ func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDeta
 		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
 		return err
 	}
-	spanJsonMap := make(map[string]interface{})
+	spanJsonMap := make(map[string]string)
 	spanJSON, err := json.Marshal(spanDetails)
 	if err != nil {
 		logger.Debug(traceRedisHandlerLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanId, err)

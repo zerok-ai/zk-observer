@@ -27,7 +27,7 @@ type RedisHandler struct {
 }
 
 func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInterval int, batchSize int, tag string) (*RedisHandler, error) {
-	handler := &RedisHandler{
+	handler := RedisHandler{
 		ctx:    context.Background(),
 		config: redisConfig,
 		dbName: dbName,
@@ -50,7 +50,7 @@ func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInter
 	handler.ctx = context.Background()
 	handler.tag = tag
 
-	return handler, nil
+	return &handler, nil
 }
 
 func (h *RedisHandler) InitializeRedisConn() error {
@@ -86,6 +86,11 @@ func (h *RedisHandler) HSet(key string, value interface{}) error {
 	return statusCmd.Err()
 }
 
+func (h *RedisHandler) HMSet(key string, value interface{}) error {
+	statusCmd := h.RedisClient.HMSet(h.ctx, key, value, 0)
+	return statusCmd.Err()
+}
+
 func (h *RedisHandler) PingRedis() error {
 	redisClient := h.RedisClient
 	if redisClient == nil {
@@ -99,7 +104,7 @@ func (h *RedisHandler) PingRedis() error {
 	return nil
 }
 
-func (h *RedisHandler) HMSetPipeline(key string, value map[string]interface{}, expiration time.Duration) error {
+func (h *RedisHandler) HMSetPipeline(key string, value map[string]string, expiration time.Duration) error {
 	cmd := h.Pipeline.HMSet(h.ctx, key, value)
 	if cmd.Err() != nil {
 		return cmd.Err()

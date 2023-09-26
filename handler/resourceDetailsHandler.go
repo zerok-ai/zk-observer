@@ -80,7 +80,7 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]
 			filteredResourceData := th.FilterResourceData(filters, attrMap)
 			logger.Debug(resourceLogTag, "Resource data is ", filteredResourceData)
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
+			err := th.redisHandler.HMSet(resourceIp, filteredResourceData)
 			if err != nil {
 				logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 				return err
@@ -92,8 +92,8 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]
 	return nil
 }
 
-func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]interface{} {
-	finalMap := map[string]interface{}{}
+func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
+	finalMap := make(map[string]string)
 
 	for _, filter := range filters {
 		tempMap := map[string]interface{}{}
