@@ -1,4 +1,4 @@
-package utils
+package redis
 
 import (
 	"context"

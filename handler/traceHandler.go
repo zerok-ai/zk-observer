@@ -6,6 +6,7 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-otlp-receiver/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -19,28 +20,28 @@ var delimiter = "__"
 
 type TraceHandler struct {
 	traceStore             sync.Map
-	traceRedisHandler      *utils.TraceRedisHandler
-	exceptionHandler       *ExceptionHandler
-	resourceDetailsHandler *ResourceDetailsHandler
+	traceRedisHandler      *redis.TraceRedisHandler
+	exceptionHandler       *redis.ExceptionRedisHandler
+	resourceDetailsHandler *redis.ResourceRedisHandler
 	otlpConfig             *config.OtlpConfig
-	spanFilteringHandler   *SpanFilteringHandler
+	spanFilteringHandler   *redis.SpanFilteringHandler
 }
 
 func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler := TraceHandler{}
-	traceRedisHandler, err := utils.NewTracesRedisHandler(config)
+	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
 	}
 
-	exceptionHandler, err := NewExceptionHandler(config)
+	exceptionHandler, err := redis.NewExceptionHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating exception handler:", err)
 		return nil, err
 	}
 
-	resourceHandler, err := NewResourceDetailsHandler(config)
+	resourceHandler, err := redis.NewResourceDetailsHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating resource details handler:", err)
 		return nil, err
@@ -51,7 +52,7 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
-	spanFilteringHandler, err := NewSpanFilteringHandler(config)
+	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
 		return nil, err
@@ -140,8 +141,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanId := hex.EncodeToString(span.SpanId)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
-				spanDetails := th.createSpanDetails(span)
+				spanDetails := th.createSpanDetails(span, resourceAttrMap)
 				spanDetails["schema_url"] = schemaUrl
+				//spanDetails["resource_attr"] = resourceAttrMap
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				workloadIds := th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
@@ -154,7 +156,6 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
-					return nil
 				}
 			}
 		}
@@ -162,7 +163,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 	return spanDetails
 }
 
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span) map[string]interface{} {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}) map[string]interface{} {
 	spanDetail := map[string]interface{}{}
 	parentSpanId := hex.EncodeToString(span.ParentSpanId)
 	if len(parentSpanId) == 0 {
@@ -179,7 +180,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) map[string]interfa
 		for _, event := range span.Events {
 			if event.Name == "exception" {
 				logger.Debug(traceLogTag, "Found exception event")
-				exceptionDetails := CreateExceptionDetails(event)
+				exceptionDetails := redis.CreateExceptionDetails(event)
 				spanIdStr := hex.EncodeToString(span.SpanId)
 				hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 				if err != nil {
@@ -205,7 +206,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span) map[string]interfa
 		spanDetail[common.AttributesKey] = attrMap
 	}
 
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, resourceAttrMap)
 
 	if len(sourceIp) > 0 {
 		spanDetail[common.SourceIpKey] = sourceIp

@@ -11,6 +11,7 @@ spec:
       labels:
         app: zk-otlp-receiver
     spec:
+      serviceAccountName: zk-otlp-receiver
       containers:
         - name: zk-otlp-receiver
           image: zk-otlp-receiver:latest

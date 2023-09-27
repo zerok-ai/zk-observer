@@ -1,11 +1,10 @@
-package handler
+package redis
 
 import (
 	"context"
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
@@ -23,7 +22,7 @@ type SpanFilteringHandler struct {
 	VersionedStore  *zkredis.VersionedStore[zkmodel.Scenario]
 	Cfg             *config.OtlpConfig
 	ruleEvaluator   evaluator.RuleEvaluator
-	redisHandler    *utils.RedisHandler
+	redisHandler    *RedisHandler
 	workloadDetails sync.Map
 	ctx             context.Context
 }
@@ -40,7 +39,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	if err != nil {
 		return nil, err
 	}
-	redisHandler, err := utils.NewRedisHandler(&cfg.Redis, common.WorkloadSpanDbName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, spanFilteringLogTag)
+	redisHandler, err := NewRedisHandler(&cfg.Redis, common.WorkloadSpanDbName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, spanFilteringLogTag)
 	if err != nil {
 		logger.Error(spanFilteringLogTag, "Error while creating workload redis handler:", err)
 		return nil, err

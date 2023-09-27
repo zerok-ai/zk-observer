@@ -1,11 +1,18 @@
 package utils
 
 import (
+	"context"
+	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"net"
+	"os"
 )
 
 var spanUtilsLogTag = "spanUtils"
@@ -15,21 +22,12 @@ var NET_PEER_NAME = "net.peer.name"
 var NET_HOST_IP = "net.host.ip"
 var NET_PEER_IP = "net.peer.ip"
 
-func GetClientIP(remoteAddr string) string {
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err != nil {
-		return ""
-	}
-	return host
-}
-
-func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}) (string, string) {
+func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, resourceAttrMap map[string]interface{}) (string, string) {
 	destIP := ""
 	sourceIP := ""
 
 	if spanKind == model.SpanKindClient {
 		if len(attributes) > 0 {
-			logger.Debug(spanUtilsLogTag, "Source Ip for client span  is ", sourceIP)
 			if peerAddr, ok := attributes[NET_SOCK_PEER_ADDR]; ok {
 				destIP = peerAddr.(string)
 			} else if peerName, ok := attributes[NET_PEER_NAME]; ok {
@@ -39,6 +37,21 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 				}
 			}
 		}
+		podName, ok1 := resourceAttrMap["k8s.pod.name"]
+		namespace, ok2 := resourceAttrMap["k8s.namespace.name"]
+		if ok1 && ok2 {
+			podNameStr, ok1 := podName.(string)
+			namespaceStr, ok2 := namespace.(string)
+			logger.Debug(spanUtilsLogTag, "Pod name is ", podNameStr, " namespace is ", namespaceStr)
+			if ok1 && ok2 {
+				clientIp, err := GetPodIP(podNameStr, namespaceStr)
+				//logger.Debug(spanUtilsLogTag, "Client IP is ", clientIp, " error is ", err)
+				if err == nil {
+					sourceIP = clientIp
+				}
+			}
+		}
+
 	} else if spanKind == model.SpanKindServer {
 		if len(attributes) > 0 {
 			if hostAddr, ok := attributes[NET_SOCK_HOST_ADDR]; ok {
@@ -130,4 +143,38 @@ func GetSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
 		return model.SpanKindClient
 	}
 	return model.SpanKindInternal
+}
+
+func GetPodIP(podName string, namespace string) (string, error) {
+	clientset, err := GetK8sClient()
+	if err != nil {
+		return "", err
+	}
+
+	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	return pod.Status.PodIP, nil
+}
+
+func GetK8sClient() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		// If incluster config failes, reading from kubeconfig.
+		// However, this is not connecting to gcp clusters. Only working for kind now(probably minikube also).
+		kubeconfig := os.Getenv("KUBECONFIG")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Kubernetes config: %v", err)
+		}
+	}
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, nil
 }

@@ -1,4 +1,4 @@
-package handler
+package redis
 
 import (
 	"encoding/json"
@@ -6,24 +6,23 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"strings"
 	"sync"
 )
 
 var resourceDbName = "resource"
-var resourceLogTag = "ResourceDetailsHandler"
+var resourceLogTag = "ResourceRedisHandler"
 
-type ResourceDetailsHandler struct {
-	redisHandler         *utils.RedisHandler
+type ResourceRedisHandler struct {
+	redisHandler         *RedisHandler
 	existingResourceData sync.Map
 	otlpConfig           *config.OtlpConfig
 }
 
-func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandler, error) {
-	handler := ResourceDetailsHandler{}
-	redisHandler, err := utils.NewRedisHandler(&config.Redis, resourceDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
+func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler, error) {
+	handler := ResourceRedisHandler{}
+	redisHandler, err := NewRedisHandler(&config.Redis, resourceDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err
@@ -35,7 +34,7 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceDetailsHandl
 	return &handler, nil
 }
 
-func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
+func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
 	if spanDetailsInput == nil {
 		return fmt.Errorf("spanDetails are nil")
 	}
@@ -92,7 +91,7 @@ func (th *ResourceDetailsHandler) SyncResourceData(spanDetailsInput *map[string]
 	return nil
 }
 
-func (th *ResourceDetailsHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
+func (th *ResourceRedisHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
 	finalMap := make(map[string]string)
 
 	for _, filter := range filters {

@@ -1,11 +1,10 @@
-package handler
+package redis
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkcommon "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -13,17 +12,17 @@ import (
 )
 
 var dbName = "exception"
-var exceptionLogTag = "ExceptionHandler"
+var exceptionLogTag = "ExceptionRedisHandler"
 
-type ExceptionHandler struct {
-	redisHandler          *utils.RedisHandler
+type ExceptionRedisHandler struct {
+	redisHandler          *RedisHandler
 	existingExceptionData sync.Map
 	otlpConfig            *config.OtlpConfig
 }
 
-func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionHandler, error) {
-	handler := ExceptionHandler{}
-	exceptionRedisHandler, err := utils.NewRedisHandler(&config.Redis, dbName, config.Exception.SyncDuration, config.Exception.BatchSize, exceptionLogTag)
+func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionRedisHandler, error) {
+	handler := ExceptionRedisHandler{}
+	exceptionRedisHandler, err := NewRedisHandler(&config.Redis, dbName, config.Exception.SyncDuration, config.Exception.BatchSize, exceptionLogTag)
 	if err != nil {
 		logger.Error(exceptionLogTag, "Error while creating exception redis handler:", err)
 		return nil, err
@@ -35,7 +34,7 @@ func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionHandler, error) {
 	return &handler, nil
 }
 
-func (th *ExceptionHandler) SyncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
+func (th *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
 	hash := ""
 	if len(exception.Stacktrace) > 0 {
 		err := th.redisHandler.CheckRedisConnection()
