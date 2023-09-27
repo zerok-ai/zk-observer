@@ -142,8 +142,17 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
-				spanDetails["schema_url"] = schemaUrl
-				//spanDetails["resource_attr"] = resourceAttrMap
+				if len(schemaUrl) == 0 {
+					language, ok := resourceAttrMap[common.ResourceLanguageKey]
+					if ok {
+						languageStr := language.(string)
+						if languageStr == "nodejs" {
+							schemaUrl = common.DefaultNodeJsSchemaUrl
+						}
+					}
+				}
+
+				spanDetails["schema_version"] = utils.GetSchemaVersion(schemaUrl)
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				workloadIds := th.spanFilteringHandler.FilterSpans(spanDetails, traceId)

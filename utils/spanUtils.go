@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net"
 	"os"
+	"strings"
 )
 
 var spanUtilsLogTag = "spanUtils"
@@ -180,4 +181,15 @@ func GetK8sClient() (*kubernetes.Clientset, error) {
 	}
 
 	return clientset, nil
+}
+
+func GetSchemaVersion(schemaUrl string) string {
+	schemaVersion := ""
+	if len(schemaUrl) > 0 {
+		values := strings.Split(schemaUrl, "/")
+		if len(values) > 0 {
+			schemaVersion = values[len(values)-1]
+		}
+	}
+	return schemaVersion
 }
