@@ -2,6 +2,7 @@ package redis
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
@@ -13,6 +14,7 @@ import (
 
 var resourceDbName = "resource"
 var resourceLogTag = "ResourceRedisHandler"
+var skipResourceDataError = fmt.Errorf("skipping saving resource data")
 
 type ResourceRedisHandler struct {
 	redisHandler         *RedisHandler
@@ -44,54 +46,62 @@ func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]in
 		return err
 	}
 	spanDetails := *spanDetailsInput
-	//logger.Debug(spanFilteringLogTag, "Span details are: ", spanDetails)
 	if len(attrMap) > 0 {
-		resourceIp := ""
-		spanKindStr, ok := spanDetails[common.SpanKindKey].(model.SpanKind)
-		if ok && spanKindStr == model.SpanKindClient {
-			sourceIp := spanDetails[common.SourceIpKey]
-			if sourceIp != nil {
-				sourceIpStr, ok := sourceIp.(string)
-				if ok {
-					resourceIp = sourceIpStr
-				}
+		resourceIp, err := th.getResourceIP(spanDetails)
+		if err != nil {
+			if errors.Is(err, skipResourceDataError) {
+				return nil
 			}
-		} else if ok && spanKindStr == model.SpanKindServer {
-			destIp := spanDetails[common.DestIpKey]
-			if destIp != nil {
-				destIpStr, ok := destIp.(string)
-				if ok {
-					resourceIp = destIpStr
-				}
-			}
-		} else {
-			//No need to save resource details.
-			logger.Debug(resourceLogTag, "Skipping saving resource data for spanKind ", spanKindStr)
-			return nil
+			logger.Error(resourceLogTag, "Error while getting resource IP ", err)
+			return err
 		}
-		if len(resourceIp) == 0 {
-			logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanKindStr)
-			return nil
-		}
-		existingValue, ok := th.existingResourceData.Load(resourceIp)
+		_, ok := th.existingResourceData.Load(resourceIp)
 		if !ok {
 			filters := []string{"service", "telemetry"}
-			filteredResourceData := th.FilterResourceData(filters, attrMap)
-			logger.Debug(resourceLogTag, "Resource data is ", filteredResourceData)
-			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err := th.redisHandler.HMSet(resourceIp, filteredResourceData)
+			filteredResourceData := th.filterResourceData(filters, attrMap)
+			err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
 			if err != nil {
 				logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 				return err
 			}
 			th.existingResourceData.Store(resourceIp, filteredResourceData)
 		}
-		logger.Debug(resourceLogTag, "Existing resource attrMap is ", existingValue)
 	}
 	return nil
 }
 
-func (th *ResourceRedisHandler) FilterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
+func (th *ResourceRedisHandler) getResourceIP(spanDetails map[string]interface{}) (string, error) {
+	resourceIp := ""
+	spanKindStr, ok := spanDetails[common.SpanKindKey].(model.SpanKind)
+	if ok && spanKindStr == model.SpanKindClient {
+		sourceIp := spanDetails[common.SourceIpKey]
+		if sourceIp != nil {
+			sourceIpStr, ok := sourceIp.(string)
+			if ok {
+				resourceIp = sourceIpStr
+			}
+		}
+	} else if ok && spanKindStr == model.SpanKindServer {
+		destIp := spanDetails[common.DestIpKey]
+		if destIp != nil {
+			destIpStr, ok := destIp.(string)
+			if ok {
+				resourceIp = destIpStr
+			}
+		}
+	} else {
+		//No need to save resource details.
+		logger.Debug(resourceLogTag, "Skipping saving resource data for spanKind ", spanKindStr)
+		return "", skipResourceDataError
+	}
+	if len(resourceIp) == 0 {
+		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanKindStr)
+		return "", fmt.Errorf("resourceIp is empty")
+	}
+	return resourceIp, nil
+}
+
+func (th *ResourceRedisHandler) filterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
 	finalMap := make(map[string]string)
 
 	for _, filter := range filters {

@@ -87,7 +87,7 @@ func (h *RedisHandler) HSet(key string, value interface{}) error {
 }
 
 func (h *RedisHandler) HMSet(key string, value interface{}) error {
-	statusCmd := h.RedisClient.HMSet(h.ctx, key, value, 0)
+	statusCmd := h.RedisClient.HMSet(h.ctx, key, value)
 	return statusCmd.Err()
 }
 
@@ -129,9 +129,11 @@ func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration ti
 }
 
 func (h *RedisHandler) setExpiryAndSync(key string, expiration time.Duration) error {
-	cmd := h.Pipeline.Expire(h.ctx, key, expiration)
-	if cmd.Err() != nil {
-		return cmd.Err()
+	if expiration > 0 {
+		cmd := h.Pipeline.Expire(h.ctx, key, expiration)
+		if cmd.Err() != nil {
+			return cmd.Err()
+		}
 	}
 	h.count++
 	h.syncPipeline()
