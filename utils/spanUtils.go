@@ -21,6 +21,7 @@ var NET_SOCK_PEER_ADDR = "net.sock.peer.addr"
 var NET_PEER_NAME = "net.peer.name"
 var NET_HOST_IP = "net.host.ip"
 var NET_PEER_IP = "net.peer.ip"
+var SERVER_SOCKET_ADDRESS = "server.socket.address"
 
 func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, resourceAttrMap map[string]interface{}) (string, string) {
 	destIP := ""
@@ -55,6 +56,8 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 	} else if spanKind == model.SpanKindServer {
 		if len(attributes) > 0 {
 			if hostAddr, ok := attributes[NET_SOCK_HOST_ADDR]; ok {
+				destIP = hostAddr.(string)
+			} else if hostAddr, ok := attributes[SERVER_SOCKET_ADDRESS]; ok {
 				destIP = hostAddr.(string)
 			} else if hostAddr, ok := attributes[NET_HOST_IP]; ok {
 				destIP = hostAddr.(string)
