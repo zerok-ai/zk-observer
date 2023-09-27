@@ -40,33 +40,40 @@ func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]in
 	if spanDetailsInput == nil {
 		return fmt.Errorf("spanDetails are nil")
 	}
+
+	if len(attrMap) == 0 {
+		//Nothing to sync.
+		return nil
+	}
+
 	err := th.redisHandler.CheckRedisConnection()
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while checking redis conn ", err)
 		return err
 	}
+
 	spanDetails := *spanDetailsInput
-	if len(attrMap) > 0 {
-		resourceIp, err := th.getResourceIP(spanDetails)
+	resourceIp, err := th.getResourceIP(spanDetails)
+	if err != nil {
+		if errors.Is(err, skipResourceDataError) {
+			return nil
+		}
+		logger.Error(resourceLogTag, "Error while getting resource IP ", err)
+		return err
+	}
+
+	_, ok := th.existingResourceData.Load(resourceIp)
+	if !ok {
+		filters := []string{"service", "telemetry"}
+		filteredResourceData := th.filterResourceData(filters, attrMap)
+		err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
 		if err != nil {
-			if errors.Is(err, skipResourceDataError) {
-				return nil
-			}
-			logger.Error(resourceLogTag, "Error while getting resource IP ", err)
+			logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 			return err
 		}
-		_, ok := th.existingResourceData.Load(resourceIp)
-		if !ok {
-			filters := []string{"service", "telemetry"}
-			filteredResourceData := th.filterResourceData(filters, attrMap)
-			err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
-			if err != nil {
-				logger.Error(resourceLogTag, "Error while setting resource data: ", err)
-				return err
-			}
-			th.existingResourceData.Store(resourceIp, filteredResourceData)
-		}
+		th.existingResourceData.Store(resourceIp, filteredResourceData)
 	}
+
 	return nil
 }
 
