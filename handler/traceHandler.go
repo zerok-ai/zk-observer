@@ -17,6 +17,7 @@ import (
 
 var traceLogTag = "TraceHandler"
 var delimiter = "__"
+var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
 
 type TraceHandler struct {
 	traceStore             sync.Map
@@ -121,6 +122,11 @@ func (th *TraceHandler) PushDataToRedis() error {
 		th.traceStore.Delete(key)
 	}
 
+	th.traceRedisHandler.SyncPipeline()
+	th.exceptionHandler.SyncPipeline()
+	th.resourceDetailsHandler.SyncPipeline()
+	th.spanFilteringHandler.SyncPipeline()
+
 	return err
 }
 
@@ -147,7 +153,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					if ok {
 						languageStr := language.(string)
 						if languageStr == "nodejs" {
-							schemaUrl = common.DefaultNodeJsSchemaUrl
+							schemaUrl = DefaultNodeJsSchemaUrl
 						}
 					}
 				}
@@ -155,6 +161,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetails["schema_version"] = utils.GetSchemaVersion(schemaUrl)
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
+				//TODO: Make this Async.
 				workloadIds := th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
 				spanDetails[common.SatisfiedWorkloadIdsKey] = workloadIds
 
@@ -184,23 +191,10 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 
 	attrMap := utils.ConvertKVListToMap(span.Attributes)
 
-	//logger.Debug(traceLogTag, "Attribute values ", attrMap)
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			if event.Name == "exception" {
-				logger.Debug(traceLogTag, "Found exception event")
-				exceptionDetails := redis.CreateExceptionDetails(event)
-				spanIdStr := hex.EncodeToString(span.SpanId)
-				hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
-				if err != nil {
-					logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
-				}
-				spanExceptionDetails := map[string]interface{}{}
-				spanExceptionDetails["error_type"] = "exception"
-				spanExceptionDetails["hash"] = hash
-				spanExceptionDetails["exception_type"] = exceptionDetails.Type
-				spanExceptionDetails["message"] = exceptionDetails.Message
-
+				spanExceptionDetails := th.createExceptionDetails(span, event)
 				existingErrorDetails, ok := spanDetail["errors"].([]map[string]interface{})
 				if !ok {
 					existingErrorDetails = []map[string]interface{}{}
@@ -228,4 +222,19 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	spanDetail[common.LatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
 
 	return spanDetail
+}
+
+func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev1.Span_Event) map[string]interface{} {
+	exceptionDetails := redis.CreateExceptionDetails(event)
+	spanIdStr := hex.EncodeToString(span.SpanId)
+	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
+	}
+	spanExceptionDetails := map[string]interface{}{}
+	spanExceptionDetails["error_type"] = "exception"
+	spanExceptionDetails["hash"] = hash
+	spanExceptionDetails["exception_type"] = exceptionDetails.Type
+	spanExceptionDetails["message"] = exceptionDetails.Message
+	return spanExceptionDetails
 }

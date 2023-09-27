@@ -54,3 +54,7 @@ func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDeta
 	}
 	return nil
 }
+
+func (h *TraceRedisHandler) SyncPipeline() {
+	h.redisHandler.SyncPipeline()
+}

@@ -15,6 +15,5 @@ var (
 	AttributesKey           = "attributes"
 	SatisfiedWorkloadIdsKey = "workload_id_list"
 
-	DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
-	ResourceLanguageKey    = "telemetry.sdk.language"
+	ResourceLanguageKey = "telemetry.sdk.language"
 )

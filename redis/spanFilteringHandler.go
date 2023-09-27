@@ -80,6 +80,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			}
 			rule := workload.Rule
 			//logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
+			//TODO: Evaluator attribute changes.
 			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
 			if err != nil {
 				continue
@@ -157,4 +158,8 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 func (h *SpanFilteringHandler) getRandomNumber() string {
 	randomNumber := rand.Intn(10000)
 	return fmt.Sprintf("%v", randomNumber)
+}
+
+func (h *SpanFilteringHandler) SyncPipeline() {
+	h.redisHandler.SyncPipeline()
 }

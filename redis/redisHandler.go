@@ -42,7 +42,7 @@ func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInter
 	handler.Pipeline = handler.RedisClient.Pipeline()
 
 	timerDuration := time.Duration(syncInterval) * time.Millisecond
-	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.syncPipeline)
+	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.SyncPipeline)
 	handler.ticker.Start()
 
 	handler.syncInterval = syncInterval
@@ -109,7 +109,7 @@ func (h *RedisHandler) HMSetPipeline(key string, value map[string]string, expira
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	return h.setExpiryAndSync(key, expiration)
+	return h.setExpiry(key, expiration)
 }
 
 func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration time.Duration) error {
@@ -117,7 +117,7 @@ func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration t
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	return h.setExpiryAndSync(key, expiration)
+	return h.setExpiry(key, expiration)
 }
 
 func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration time.Duration) error {
@@ -125,10 +125,10 @@ func (h *RedisHandler) SAddPipeline(key string, value interface{}, expiration ti
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
-	return h.setExpiryAndSync(key, expiration)
+	return h.setExpiry(key, expiration)
 }
 
-func (h *RedisHandler) setExpiryAndSync(key string, expiration time.Duration) error {
+func (h *RedisHandler) setExpiry(key string, expiration time.Duration) error {
 	if expiration > 0 {
 		cmd := h.Pipeline.Expire(h.ctx, key, expiration)
 		if cmd.Err() != nil {
@@ -136,7 +136,6 @@ func (h *RedisHandler) setExpiryAndSync(key string, expiration time.Duration) er
 		}
 	}
 	h.count++
-	h.syncPipeline()
 	return nil
 }
 
@@ -158,7 +157,7 @@ func (h *RedisHandler) CheckRedisConnection() error {
 	return nil
 }
 
-func (h *RedisHandler) syncPipeline() {
+func (h *RedisHandler) SyncPipeline() {
 	syncDuration := time.Duration(h.syncInterval) * time.Millisecond
 	if h.count > h.batchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.Pipeline.Exec(h.ctx)

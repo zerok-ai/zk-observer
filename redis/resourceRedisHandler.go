@@ -36,7 +36,7 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler
 	return &handler, nil
 }
 
-func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
+func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]interface{}, attrMap map[string]interface{}) error {
 	if spanDetailsInput == nil {
 		return fmt.Errorf("spanDetails are nil")
 	}
@@ -46,14 +46,14 @@ func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]in
 		return nil
 	}
 
-	err := th.redisHandler.CheckRedisConnection()
+	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while checking redis conn ", err)
 		return err
 	}
 
 	spanDetails := *spanDetailsInput
-	resourceIp, err := th.getResourceIP(spanDetails)
+	resourceIp, err := h.getResourceIP(spanDetails)
 	if err != nil {
 		if errors.Is(err, skipResourceDataError) {
 			return nil
@@ -62,22 +62,22 @@ func (th *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]in
 		return err
 	}
 
-	_, ok := th.existingResourceData.Load(resourceIp)
+	_, ok := h.existingResourceData.Load(resourceIp)
 	if !ok {
 		filters := []string{"service", "telemetry"}
-		filteredResourceData := th.filterResourceData(filters, attrMap)
-		err := th.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
+		filteredResourceData := h.filterResourceData(filters, attrMap)
+		err := h.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 			return err
 		}
-		th.existingResourceData.Store(resourceIp, filteredResourceData)
+		h.existingResourceData.Store(resourceIp, filteredResourceData)
 	}
 
 	return nil
 }
 
-func (th *ResourceRedisHandler) getResourceIP(spanDetails map[string]interface{}) (string, error) {
+func (h *ResourceRedisHandler) getResourceIP(spanDetails map[string]interface{}) (string, error) {
 	resourceIp := ""
 	spanKindStr, ok := spanDetails[common.SpanKindKey].(model.SpanKind)
 	if ok && spanKindStr == model.SpanKindClient {
@@ -108,7 +108,7 @@ func (th *ResourceRedisHandler) getResourceIP(spanDetails map[string]interface{}
 	return resourceIp, nil
 }
 
-func (th *ResourceRedisHandler) filterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
+func (h *ResourceRedisHandler) filterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
 	finalMap := make(map[string]string)
 
 	for _, filter := range filters {
@@ -130,4 +130,8 @@ func (th *ResourceRedisHandler) filterResourceData(filters []string, attrMap map
 		}
 	}
 	return finalMap
+}
+
+func (h *ResourceRedisHandler) SyncPipeline() {
+	h.redisHandler.SyncPipeline()
 }

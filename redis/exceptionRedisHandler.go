@@ -34,16 +34,16 @@ func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionRedisHandler, err
 	return &handler, nil
 }
 
-func (th *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
+func (h *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDetails, spanId string) (string, error) {
 	hash := ""
 	if len(exception.Stacktrace) > 0 {
-		err := th.redisHandler.CheckRedisConnection()
+		err := h.redisHandler.CheckRedisConnection()
 		if err != nil {
 			logger.Error(exceptionLogTag, "Error while checking redis conn ", err)
 			return "", err
 		}
 		hash = zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
-		_, ok := th.existingExceptionData.Load(hash)
+		_, ok := h.existingExceptionData.Load(hash)
 		if !ok {
 			exceptionJSON, err := json.Marshal(exception)
 			if err != nil {
@@ -51,12 +51,12 @@ func (th *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDet
 				return "", err
 			}
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err = th.redisHandler.SetNXPipeline(hash, exceptionJSON, 0)
+			err = h.redisHandler.SetNXPipeline(hash, exceptionJSON, 0)
 			if err != nil {
 				logger.Error(exceptionLogTag, "Error while setting exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
-			th.existingExceptionData.Store(hash, true)
+			h.existingExceptionData.Store(hash, true)
 		}
 	} else {
 		logger.Error(exceptionLogTag, "Could not find stacktrace for exception for span Id ", spanId)
@@ -67,7 +67,6 @@ func (th *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDet
 
 func CreateExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
 	exceptionAttr := event.Attributes
-	//logger.Debug(exceptionLogTag, "Exception attributes ", exceptionAttr)
 	exception := model.ExceptionDetails{}
 	for _, attr := range exceptionAttr {
 		switch attr.Key {
@@ -80,4 +79,8 @@ func CreateExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
 		}
 	}
 	return &exception
+}
+
+func (h *ExceptionRedisHandler) SyncPipeline() {
+	h.redisHandler.SyncPipeline()
 }
