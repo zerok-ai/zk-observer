@@ -23,7 +23,7 @@ data:
      dbs:
       traces: 3
       exception: 8
-      resource: 5
+      resource: 7
       scenario_db: 2
       workloads: 1
     logs:

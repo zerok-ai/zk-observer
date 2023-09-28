@@ -8,7 +8,6 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	"strings"
 	"sync"
 )
 
@@ -64,9 +63,16 @@ func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *map[string]int
 
 	_, ok := h.existingResourceData.Load(resourceIp)
 	if !ok {
-		filters := []string{"service", "telemetry"}
-		filteredResourceData := h.filterResourceData(filters, attrMap)
-		err := h.redisHandler.HMSetPipeline(resourceIp, filteredResourceData, 0)
+		filteredResourceData := make(map[string]string)
+		telemetryData := model.CreateTelemetryDetails(attrMap)
+		telemetryDataJSON, err := json.Marshal(telemetryData)
+		if err != nil {
+			logger.Debug(resourceLogTag, "Error encoding telemetryData for service %s: %v\n", telemetryData.ServiceName, err)
+			return err
+		}
+		filteredResourceData["telemetry"] = string(telemetryDataJSON)
+		logger.Debug("Setting resource data ", filteredResourceData)
+		err = h.redisHandler.HMSet(resourceIp, filteredResourceData)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 			return err
@@ -106,30 +112,6 @@ func (h *ResourceRedisHandler) getResourceIP(spanDetails map[string]interface{})
 		return "", fmt.Errorf("resourceIp is empty")
 	}
 	return resourceIp, nil
-}
-
-func (h *ResourceRedisHandler) filterResourceData(filters []string, attrMap map[string]interface{}) map[string]string {
-	finalMap := make(map[string]string)
-
-	for _, filter := range filters {
-		tempMap := map[string]interface{}{}
-		count := 0
-		for key, value := range attrMap {
-			if strings.HasPrefix(key, filter) {
-				tempMap[key] = value
-				count++
-			}
-		}
-		if count > 0 {
-			tempMapJSON, err := json.Marshal(tempMap)
-			if err != nil {
-				logger.Error(resourceLogTag, "Error encoding resource details: %v\n", err)
-				continue
-			}
-			finalMap[filter] = string(tempMapJSON)
-		}
-	}
-	return finalMap
 }
 
 func (h *ResourceRedisHandler) SyncPipeline() {
