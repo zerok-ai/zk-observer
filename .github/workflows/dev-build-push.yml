@@ -1,0 +1,48 @@
+# Purpose: This action is triggered manually and is meant for the case where
+# the build happens through this action and the deployment is done through CLI
+name: dev-build-push
+on:
+  workflow_dispatch:
+    inputs:
+      DOCKER_TAG:
+        description: 'Docker Image Tag'
+        required: true
+        default: '0.0.9-helmtest'
+      GKE_CLUSTER:
+        description: 'Cluster Name'
+        required: true
+        default: 'devclient03'
+
+jobs:
+  init:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@main
+    with:
+      GKE_CLUSTER: ${{ github.event.inputs.GKE_CLUSTER }}
+      GIT_TAG: ${{ github.ref }}
+      DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
+
+  build-push:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push.yml@main
+    with:
+      VERSION: ${{ needs.init.outputs.VERSION }}
+      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
+      DOCKER_IDENTIFIER: ${{ needs.init.outputs.CLUSTERNAME }}
+      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
+    secrets:
+      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
+    needs: init
+
+  # build helm charts and publish to helm repository
+  helm-push:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-helm-publish.yml@main
+    with:
+      HELM_VERSION: ${{ needs.init.outputs.VERSION }}
+      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
+      DOCKER_IDENTIFIER: ${{ needs.init.outputs.CLUSTERNAME }}
+      HELM_BUCKET_NAME: ${{ needs.init.outputs.HELM_BUCKET_NAME }}
+      HELM_BUCKET_URL: ${{ needs.init.outputs.HELM_BUCKET_URL }}
+      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
+    secrets:
+      AWS_ACCESS_ID: ${{ secrets.AWS_ACCESS_ID }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+    needs: [init,build-push]
