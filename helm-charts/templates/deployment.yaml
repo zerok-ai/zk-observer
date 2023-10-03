@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: zk-otlp-receiver
   labels:
   {{- include "helm-charts.labels" . | nindent 4 }}
 spec:
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: zk-otlp-receiver

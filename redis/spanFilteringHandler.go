@@ -34,7 +34,7 @@ type WorkLoadTraceId struct {
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
-	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, 0)
+	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 global:
   dockerBase: "us-west1-docker.pkg.dev/zerok-dev/stage/"
 
+replicaCount: 1
+
 image:
   repo: zk-otlp-receiver
   tag: "latest"
