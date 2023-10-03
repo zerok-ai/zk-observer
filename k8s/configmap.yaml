@@ -4,20 +4,9 @@ data:
     port: 8147
     setHttpEndPoint: true
     setSpanAttributes: true
-    traces:
-      syncDuration: 10000 #millis
-      batchSize: 30
-      ttl: 1800
-    workloads:
-      syncDuration: 10000 #millis
-      batchSize: 30
-      ttl: 1800
-    resources:
-      syncDuration: 10000 #millis
-      batchSize: 30
-    exceptions:
-      syncDuration: 10000 #millis
-      batchSize: 30
+    logs:
+      color: true
+      level: DEBUG
     redis:
      port: 6379
      dbs:
@@ -26,11 +15,22 @@ data:
       traces: 3
       pod_details: 7
       error_details: 8
-    logs:
-      color: true
-      level: DEBUG
+    traces:
+      syncDuration: 10000 #millis
+      batchSize: 30
+      ttl: 1800
+    workloads:
+      syncDuration: 10000 #millis
+      batchSize: 30
+      ttl: 1800
     scenario:
       syncDuration: 30 #seconds
+    exception:
+      syncDuration: 30 #seconds
+      batchSize: 30
+    resources:
+      syncDuration: 30 #seconds
+      batchSize: 30
 kind: ConfigMap
 metadata:
   name: zk-otlp-receiver
