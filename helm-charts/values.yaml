@@ -1,46 +1,21 @@
 global:
   dockerBase: "us-west1-docker.pkg.dev/zerok-dev/stage/"
 
+image:
+  repo: zk-otlp-receiver
+  tag: "latest"
+  pullPolicy: Always
+
 kubernetesClusterDomain: cluster.local
-zkOtlpReceiver:
-  otlpConfigYaml: |-
-    port: 8147
-    setHttpEndPoint: true
-    setSpanAttributes: true
-    logs:
-      color: true
-      level: DEBUG
-    redis:
-     port: 6379
-     dbs:
-      filtered_traces: 1
-      scenarios: 2
-      traces: 3
-      pod_details: 7
-      error_details: 8
-    traces:
-      syncDuration: 10
-      batchSize: 30
-      ttl: 1800
-    workloads:
-      syncDuration: 10
-      batchSize: 30
-      ttl: 1800
-    scenario:
-      syncDuration: 30
-    exception:
-      syncDuration: 30
-      batchSize: 30
-    resources:
-      syncDuration: 30
-      batchSize: 30
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 8147
-  replicas: 1
-  type: ClusterIP
-  image:
-    repo: zk-otlp-receiver
-    tag: "latest"
-    pullPolicy: Always
+
+otlpConfigYaml:
+  logs:
+    color: true
+    level: DEBUG
+
+ports:
+- port: 80
+  protocol: TCP
+  targetPort: 8147
+
+type: ClusterIP

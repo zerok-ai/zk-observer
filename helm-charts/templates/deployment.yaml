@@ -29,8 +29,8 @@ spec:
             configMapKeyRef:
               name: "zk-redis-config"
               key: "redisHost"
-        image: {{.Values.global.dockerBase}}/{{.Values.zkOtlpReceiver.image.repo}}:{{.Values.zkOtlpReceiver.image.tag}}
-        imagePullPolicy: {{ .Values.zkOtlpReceiver.image.pullPolicy }}
+        image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: zk-otlp-receiver
         ports:
         - containerPort: 8147
