@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
@@ -35,20 +34,9 @@ type WorkLoadTraceId struct {
 func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
 	handler := SpanFilteringHandler{}
-	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.RedisScenarioDbName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	redisHandler, err := NewRedisHandler(&cfg.Redis, common.WorkloadSpanDbName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, spanFilteringLogTag)
-	if err != nil {
-		logger.Error(spanFilteringLogTag, "Error while creating workload redis handler:", err)
-		return nil, err
-	}
 
-	handler.redisHandler = redisHandler
-	handler.VersionedStore = store
 	handler.Cfg = cfg
-	handler.ruleEvaluator = evaluator.NewRuleEvaluator()
+	handler.ruleEvaluator = evaluator.NewRuleEvaluator(cfg.Redis, context.Background())
 	handler.workloadDetails = sync.Map{}
 	handler.ctx = context.Background()
 
@@ -62,7 +50,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 		}
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
-	satisfiedWorkLoadIds := []string{}
+	satisfiedWorkLoadIds := make([]string, 0)
 	for _, scenario := range scenarios {
 		if scenario == nil {
 			//logger.Debug(spanFilteringLogTag, "No scenario found")
@@ -75,13 +63,11 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			continue
 		}
 		for id, workload := range *workloads {
-			if workload.Executor != "OTEL" {
+			if workload.Executor != zkmodel.ExecutorOTel {
 				continue
 			}
 			rule := workload.Rule
-			//logger.Debug(spanFilteringLogTag, "Checking for workload id: ", id)
-			//TODO: Evaluator attribute changes.
-			value, err := h.ruleEvaluator.EvalRule(rule, spanDetails)
+			value, err := h.ruleEvaluator.EvalRule(rule, "1.7.0", spanDetails)
 			if err != nil {
 				continue
 			}

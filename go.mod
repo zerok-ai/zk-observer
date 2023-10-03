@@ -6,7 +6,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/kataras/iris/v12 v12.2.0
 	github.com/redis/go-redis/v9 v9.0.5
-	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231001183306-8acb44a20d79
+	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231003044138-15cd26ac49e0
 	go.opentelemetry.io/proto/otlp v1.0.0
 	google.golang.org/grpc v1.56.2
 	k8s.io/apimachinery v0.28.2
