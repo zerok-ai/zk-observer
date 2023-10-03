@@ -20,6 +20,9 @@ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || { curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
+sync:
+	go get -v ./...
+
 .PHONY: build
 build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o zk-otlp-receiver cmd/main.go
@@ -37,3 +40,6 @@ install: kustomize
 .PHONY: uninstall
 uninstall: kustomize
 	kubectl delete -k k8s
+
+ci-cd-build: sync
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o $(NAME) cmd/main.go
