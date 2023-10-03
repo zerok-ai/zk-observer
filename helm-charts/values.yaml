@@ -31,7 +31,7 @@ zkOtlpReceiver:
     targetPort: 8147
   replicas: 1
   type: ClusterIP
-  zkOtlpReceiver:
+  zkOtlpReceiverImageConfig:
     image:
       repository: us-west1-docker.pkg.dev/zerok-dev/stage/zk-otlp-receiver
       tag: dev
