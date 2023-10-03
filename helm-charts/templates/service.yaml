@@ -5,9 +5,9 @@ metadata:
   labels:
   {{- include "helm-charts.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.zkOtlpReceiver.type }}
+  type: {{ .Values.type }}
   selector:
     app: zk-otlp-receiver
   {{- include "helm-charts.selectorLabels" . | nindent 4 }}
   ports:
-  {{- .Values.zkOtlpReceiver.ports | toYaml | nindent 2 -}}
+  {{- .Values.ports | toYaml | nindent 2 -}}
