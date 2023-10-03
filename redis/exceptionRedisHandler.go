@@ -3,6 +3,7 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	zkcommon "github.com/zerok-ai/zk-utils-go/common"
@@ -11,7 +12,6 @@ import (
 	"sync"
 )
 
-var dbName = "exception"
 var exceptionLogTag = "ExceptionRedisHandler"
 
 type ExceptionRedisHandler struct {
@@ -22,7 +22,7 @@ type ExceptionRedisHandler struct {
 
 func NewExceptionHandler(config *config.OtlpConfig) (*ExceptionRedisHandler, error) {
 	handler := ExceptionRedisHandler{}
-	exceptionRedisHandler, err := NewRedisHandler(&config.Redis, dbName, config.Exception.SyncDuration, config.Exception.BatchSize, exceptionLogTag)
+	exceptionRedisHandler, err := NewRedisHandler(&config.Redis, common.ErrorDetailDBName, config.Exception.SyncDuration, config.Exception.BatchSize, exceptionLogTag)
 	if err != nil {
 		logger.Error(exceptionLogTag, "Error while creating exception redis handler:", err)
 		return nil, err

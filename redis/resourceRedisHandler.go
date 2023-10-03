@@ -11,7 +11,6 @@ import (
 	"sync"
 )
 
-var resourceDbName = "resource"
 var resourceLogTag = "ResourceRedisHandler"
 var skipResourceDataError = fmt.Errorf("skipping saving resource data")
 
@@ -23,7 +22,7 @@ type ResourceRedisHandler struct {
 
 func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler, error) {
 	handler := ResourceRedisHandler{}
-	redisHandler, err := NewRedisHandler(&config.Redis, resourceDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
+	redisHandler, err := NewRedisHandler(&config.Redis, common.PodDetailsDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err

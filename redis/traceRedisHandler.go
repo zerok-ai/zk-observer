@@ -3,12 +3,12 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"time"
 )
 
-var traceDbName = "traces"
 var traceRedisHandlerLogTag = "TraceRedisHandler"
 
 type TraceRedisHandler struct {
@@ -18,7 +18,7 @@ type TraceRedisHandler struct {
 }
 
 func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, error) {
-	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, traceDbName, otlpConfig.Traces.SyncDuration, otlpConfig.Traces.BatchSize, traceRedisHandlerLogTag)
+	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, common.TraceDbName, otlpConfig.Traces.SyncDuration, otlpConfig.Traces.BatchSize, traceRedisHandlerLogTag)
 
 	if err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while creating redis client ", err)

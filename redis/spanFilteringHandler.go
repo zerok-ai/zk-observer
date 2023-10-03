@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
@@ -33,12 +34,25 @@ type WorkLoadTraceId struct {
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
-	handler := SpanFilteringHandler{}
+	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, 0)
+	if err != nil {
+		return nil, err
+	}
 
-	handler.Cfg = cfg
-	handler.ruleEvaluator = evaluator.NewRuleEvaluator(cfg.Redis, context.Background())
-	handler.workloadDetails = sync.Map{}
-	handler.ctx = context.Background()
+	redisHandler, err := NewRedisHandler(&cfg.Redis, common.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
+	if err != nil {
+		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
+		return nil, err
+	}
+
+	handler := SpanFilteringHandler{
+		VersionedStore:  store,
+		Cfg:             cfg,
+		ruleEvaluator:   evaluator.NewRuleEvaluator(cfg.Redis, context.Background()),
+		workloadDetails: sync.Map{},
+		ctx:             context.Background(),
+		redisHandler:    redisHandler,
+	}
 
 	return &handler, nil
 }

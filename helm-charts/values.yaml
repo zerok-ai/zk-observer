@@ -15,11 +15,11 @@ zkOtlpReceiver:
     redis:
      port: 6379
      dbs:
+      filtered_traces: 1
+      scenarios: 2
       traces: 3
-      exception: 8
-      resource: 5
-      scenario_db: 2
-      workloads: 1
+      pod_details: 7
+      error_details: 8
     logs:
       color: true
       level: DEBUG
