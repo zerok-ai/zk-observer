@@ -1,0 +1,70 @@
+# Purpose: This action is triggered through a git push and does all it takes to  deploy the app
+# on a cluster
+name: dev-build-push-deploy
+on:
+  push:
+    tags: #dev/<CLUSTER>/<DOCKER-TAG-OR-VERSION>
+      - 'dev/**'
+
+  #  # Uncomment the following code for testing
+#  workflow_dispatch:
+#    inputs:
+#      DOCKER_TAG:
+#        description: 'Docker Image Tag'
+#        required: true
+#        default: '0.0.9-helmtest'
+#      GKE_CLUSTER:
+#        description: 'Cluster Name'
+#        required: true
+#        default: 'devclient03'
+env:
+  DOCKER_REG: ${{ vars.DOCKER_REG }}
+  DOCKER_REPO: ${{ vars.DOCKER_REPO }}
+  APP_NAME: ${{ vars.APP_NAME }}
+
+jobs:
+  init:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@main
+    with:
+      GKE_CLUSTER: ${{ github.event.inputs.GKE_CLUSTER }}
+      GIT_TAG: ${{ github.ref }}
+      DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
+
+  build-push:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push.yml@main
+    with:
+      VERSION: ${{ needs.init.outputs.VERSION }}
+      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
+      DOCKER_IDENTIFIER: ${{ needs.init.outputs.CLUSTERNAME }}
+      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
+    secrets:
+      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
+    needs: init
+
+
+  # build helm charts and publish to helm repository
+  helm-push:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-helm-publish.yml@main
+    with:
+      HELM_VERSION: ${{ needs.init.outputs.VERSION }}
+      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
+      DOCKER_IDENTIFIER: ${{ needs.init.outputs.CLUSTERNAME }}
+      HELM_BUCKET_NAME: ${{ needs.init.outputs.HELM_BUCKET_NAME }}
+      HELM_BUCKET_URL: ${{ needs.init.outputs.HELM_BUCKET_URL }}
+      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
+    secrets:
+      AWS_ACCESS_ID: ${{ secrets.AWS_ACCESS_ID }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+    needs: [init,build-push]
+
+  deploy:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-deploy.yml@main
+    with:
+      CLUSTERNAME: ${{ needs.init.outputs.CLUSTERNAME }}
+      VERSION: ${{ needs.init.outputs.VERSION }}
+      MIGRATION_VERSION: ${{ needs.init.outputs.VERSION }}
+      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
+      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
+    secrets:
+      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
+    needs: [init,build-push]
