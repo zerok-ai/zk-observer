@@ -1,3 +1,6 @@
+global:
+  dockerBase: "us-west1-docker.pkg.dev/zerok-dev/stage/"
+
 kubernetesClusterDomain: cluster.local
 zkOtlpReceiver:
   otlpConfigYaml: |-
@@ -37,8 +40,7 @@ zkOtlpReceiver:
     targetPort: 8147
   replicas: 1
   type: ClusterIP
-  zkOtlpReceiverImageConfig:
-    image:
-      repository: us-west1-docker.pkg.dev/zerok-dev/stage/zk-otlp-receiver
-      tag: dev
-    imagePullPolicy: Always
+  image:
+    repo: zk-otlp-receiver
+    tag: "latest"
+    pullPolicy: Always
