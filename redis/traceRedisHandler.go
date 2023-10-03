@@ -18,6 +18,11 @@ type TraceRedisHandler struct {
 }
 
 func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, error) {
+	logger.Debug(traceRedisHandlerLogTag, "Creating new trace redis handler")
+	logger.Debug(traceRedisHandlerLogTag, "Redis config: ", otlpConfig.Redis)
+	logger.Debug(traceRedisHandlerLogTag, "SyncDuration: ", otlpConfig.Traces.SyncDuration)
+	logger.Debug(traceRedisHandlerLogTag, "BatchSize: ", otlpConfig.Traces.BatchSize)
+	logger.Debug(traceRedisHandlerLogTag, "TTL: ", otlpConfig.Traces.Ttl)
 	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, common.TraceDbName, otlpConfig.Traces.SyncDuration, otlpConfig.Traces.BatchSize, traceRedisHandlerLogTag)
 
 	if err != nil {
