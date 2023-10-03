@@ -40,7 +40,7 @@ type OtlpConfig struct {
 	Traces            TraceConfig           `yaml:"traces"`
 	Workloads         WorkloadConfig        `yaml:"workloads"`
 	Scenario          ScenarioConfig        `yaml:"scenario"`
-	Exception         ExceptionConfig       `yaml:"exceptions"`
+	Exception         ExceptionConfig       `yaml:"exception"`
 	Resources         ResourceConfig        `yaml:"resources"`
 }
 
