@@ -6,6 +6,7 @@ VERSION = devclient04
 IMAGE = zk-otlp-receiver
 ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
+NAME = zk-otlp-receiver
 
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
@@ -25,7 +26,7 @@ sync:
 
 .PHONY: build
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o zk-otlp-receiver cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(NAME) cmd/main.go
 
 .PHONY: buildAndPush
 buildAndPush: build
