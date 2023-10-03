@@ -4,7 +4,7 @@ metadata:
   name: demo-instrumentation-java
 spec:
   exporter:
-    endpoint: http://opentelemetry-collector.default.svc.cluster.local:4318
+    endpoint: http://opentelemetry-collector.default.svc.cluster.local:4317
   propagators:
     - tracecontext
     - baggage
@@ -12,9 +12,9 @@ spec:
     env:
       - name: OTEL_TRACES_EXPORTER
         value: otlp
-      - name: OTEL_EXPORTER_OTLP_PROTOCOL
-        value: http/protobuf
       - name: OTEL_METRICS_EXPORTER
         value: none
       - name: OTEL_LOGS_EXPORTER
         value: none
+      - name: OTEL_LOG_LEVEL
+        value: DEBUG

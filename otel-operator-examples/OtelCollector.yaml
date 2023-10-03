@@ -7,7 +7,7 @@ spec:
   hostNetwork: true
   config: |
     receivers:
-      otlp:
+      otlp/http:
         protocols:
           http:
       otlp/grpc:
@@ -17,7 +17,7 @@ spec:
       otlphttp: 
         endpoint: http://0.0.0.0:31600
         compression: "none"
-      otlp:
+      otlp/grpc:
         endpoint: http://0.0.0.0:31601
         compression: "none"
         tls:
@@ -25,10 +25,10 @@ spec:
     service:
       pipelines:
         traces:
-          receivers: [otlp]
+          receivers: [otlp/http]
           processors: []
           exporters: [otlphttp]
         traces/grpc:
           receivers: [otlp/grpc]
           processors: []
-          exporters: [otlp]
+          exporters: [otlp/grpc]
