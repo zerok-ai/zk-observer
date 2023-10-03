@@ -8,7 +8,7 @@ image:
 
 kubernetesClusterDomain: cluster.local
 
-otlpConfigYaml:
+serviceConfigs:
   logs:
     color: true
     level: DEBUG

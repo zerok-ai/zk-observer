@@ -10,8 +10,8 @@ data:
     setHttpEndPoint: true
     setSpanAttributes: true
     logs:
-      color: {{ .Values.zkOtlpReceiver.logs.color }}
-      level: {{ .Values.zkOtlpReceiver.logs.level }}
+      color: {{ .Values.serviceConfigs.logs.color }}
+      level: {{ .Values.serviceConfigs.logs.level }}
     redis:
       port: 6379
       dbs:

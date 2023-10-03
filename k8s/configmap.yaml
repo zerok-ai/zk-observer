@@ -16,20 +16,20 @@ data:
       pod_details: 7
       error_details: 8
     traces:
-      syncDuration: 10000 #millis
+      syncDuration: 10
       batchSize: 30
       ttl: 1800
     workloads:
-      syncDuration: 10000 #millis
+      syncDuration: 10
       batchSize: 30
       ttl: 1800
     scenario:
-      syncDuration: 30 #seconds
+      syncDuration: 30
     exception:
-      syncDuration: 30 #seconds
+      syncDuration: 30
       batchSize: 30
     resources:
-      syncDuration: 30 #seconds
+      syncDuration: 30
       batchSize: 30
 kind: ConfigMap
 metadata:
