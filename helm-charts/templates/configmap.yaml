@@ -5,7 +5,7 @@ metadata:
   labels:
   {{- include "helm-charts.labels" . | nindent 4 }}
 data:
-  otlp-config.yaml: |-
+  config.yaml: |-
     port: 8147
     setHttpEndPoint: true
     setSpanAttributes: true
