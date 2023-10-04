@@ -23,6 +23,8 @@ $(KUSTOMIZE): $(LOCALBIN)
 
 sync:
 	go get -v ./...
+megaSync:
+	go get -u ./...
 
 .PHONY: build
 build:
