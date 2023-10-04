@@ -83,10 +83,13 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 				continue
 			}
 			rule := workload.Rule
-			schemaVersion, ok := spanDetails["schema_version"]
-			if !ok {
-				schemaVersion = common.DefaultSchemaVersion
-			}
+			//TODO: Uncomment following code once receiver starts getting correct schema version
+			//schemaVersion, ok := spanDetails["schema_version"]
+			//if !ok {
+			//	schemaVersion = common.DefaultSchemaVersion
+			//}
+			var schemaVersion interface{} = common.DefaultSchemaVersion
+
 			logger.Debug(spanFilteringLogTag, "Evaluating rule for scenario: ", scenario.Title, " workload id: ", id)
 			value, err := h.ruleEvaluator.EvalRule(rule, schemaVersion.(string), workload.Protocol, spanDetails)
 			if err != nil {
