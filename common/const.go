@@ -22,4 +22,6 @@ const (
 	SatisfiedWorkloadIdsKey = "workload_id_list"
 
 	ResourceLanguageKey = "telemetry.sdk.language"
+
+	DefaultSchemaVersion = "1.7.0"
 )

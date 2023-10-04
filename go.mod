@@ -6,7 +6,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/kataras/iris/v12 v12.2.0
 	github.com/redis/go-redis/v9 v9.0.5
-	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231003044138-15cd26ac49e0
+	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231004080917-5f410e06b16d
 	go.opentelemetry.io/proto/otlp v1.0.0
 	google.golang.org/grpc v1.56.2
 	k8s.io/apimachinery v0.28.2
@@ -61,7 +61,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mailgun/raymond/v2 v2.0.48 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.23 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.25 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

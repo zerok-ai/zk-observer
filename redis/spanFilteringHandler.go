@@ -48,7 +48,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig) (*SpanFilteringHandler, err
 	handler := SpanFilteringHandler{
 		VersionedStore:  store,
 		Cfg:             cfg,
-		ruleEvaluator:   evaluator.NewRuleEvaluator(cfg.Redis, context.Background()),
+		ruleEvaluator:   evaluator.NewRuleEvaluator(cfg.Redis, zkmodel.ExecutorOTel, context.Background()),
 		workloadDetails: sync.Map{},
 		ctx:             context.Background(),
 		redisHandler:    redisHandler,
@@ -81,7 +81,11 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 				continue
 			}
 			rule := workload.Rule
-			value, err := h.ruleEvaluator.EvalRule(rule, "1.7.0", spanDetails)
+			schemaVersion, ok := spanDetails["schema_version"]
+			if !ok {
+				schemaVersion = common.DefaultSchemaVersion
+			}
+			value, err := h.ruleEvaluator.EvalRule(rule, schemaVersion.(string), workload.Protocol, spanDetails)
 			if err != nil {
 				continue
 			}
