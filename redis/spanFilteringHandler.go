@@ -67,7 +67,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 	satisfiedWorkLoadIds := make([]string, 0)
 	for _, scenario := range scenarios {
 		if scenario == nil {
-			//logger.Debug(spanFilteringLogTag, "No scenario found")
+			logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
 		}
 		//Getting workloads and iterate over them
@@ -76,8 +76,10 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			logger.Debug(spanFilteringLogTag, "No workloads found for scenario: ", scenario.Title)
 			continue
 		}
+		logger.Debug(spanFilteringLogTag, "Workloads found for scenario: ", scenario.Title, " workloads: ", workloads)
 		for id, workload := range *workloads {
 			if workload.Executor != zkmodel.ExecutorOTel {
+				logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 				continue
 			}
 			rule := workload.Rule
@@ -85,6 +87,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails map[string]interface{}, t
 			if !ok {
 				schemaVersion = common.DefaultSchemaVersion
 			}
+			logger.Debug(spanFilteringLogTag, "Evaluating rule for scenario: ", scenario.Title, " workload id: ", id)
 			value, err := h.ruleEvaluator.EvalRule(rule, schemaVersion.(string), workload.Protocol, spanDetails)
 			if err != nil {
 				continue
