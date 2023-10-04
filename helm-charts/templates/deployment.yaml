@@ -37,7 +37,7 @@ spec:
         - containerPort: 8147
         resources: {}
         volumeMounts:
-        - mountPath: /opt
+        - mountPath: /zk/config
           name: otlp-config
       volumes:
       - configMap:

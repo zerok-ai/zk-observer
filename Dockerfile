@@ -1,15 +1,4 @@
-# Dockerfile
-
-# Use Alpine as the base image
-FROM alpine:latest
-
-# Set the working directory inside the container
-WORKDIR /app
-
-COPY zk-otlp-receiver /app/myapp
-
-# Set executable permissions for the Go executable
-RUN chmod +x /app/myapp
-
-# Run the Go executable
-CMD ["./myapp","-c","/opt/otlp-config.yaml"]
+FROM golang:1.18-alpine
+WORKDIR /zk
+COPY zk-otlp-receiver .
+CMD ["/zk/zk-otlp-receiver","-c","/zk/config/otlp-config.yaml"]
