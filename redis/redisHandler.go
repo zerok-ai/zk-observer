@@ -41,7 +41,7 @@ func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInter
 
 	handler.Pipeline = handler.RedisClient.Pipeline()
 
-	timerDuration := time.Duration(syncInterval) * time.Millisecond
+	timerDuration := time.Duration(syncInterval) * time.Second
 	handler.ticker = zktick.GetNewTickerTask("sync_pipeline", timerDuration, handler.SyncPipeline)
 	handler.ticker.Start()
 
@@ -158,7 +158,7 @@ func (h *RedisHandler) CheckRedisConnection() error {
 }
 
 func (h *RedisHandler) SyncPipeline() {
-	syncDuration := time.Duration(h.syncInterval) * time.Millisecond
+	syncDuration := time.Duration(h.syncInterval) * time.Second
 	if h.count > h.batchSize || time.Since(h.startTime) >= syncDuration {
 		_, err := h.Pipeline.Exec(h.ctx)
 		if err != nil {
