@@ -18,6 +18,7 @@ data:
         filtered_traces: 1
         scenarios: 2
         traces: 3
+        executor_attr: 4
         pod_details: 7
         error_details: 8
     traces:
