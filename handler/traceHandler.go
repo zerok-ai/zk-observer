@@ -130,10 +130,9 @@ func (th *TraceHandler) PushDataToRedis() error {
 	return err
 }
 
-func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) []map[string]interface{} {
-	var spanDetails []map[string]interface{}
+func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
 	if len(resourceSpans) == 0 {
-		return spanDetails
+		return
 	}
 	for _, resourceSpan := range resourceSpans {
 		schemaUrl := resourceSpan.SchemaUrl
@@ -176,7 +175,6 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			}
 		}
 	}
-	return spanDetails
 }
 
 func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}) map[string]interface{} {
