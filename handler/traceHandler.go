@@ -158,7 +158,6 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				}
 
 				spanDetails["schema_version"] = utils.GetSchemaVersion(schemaUrl)
-				spanDetails["schema_url"] = schemaUrl
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
