@@ -1,8 +1,11 @@
 package config
 
 import (
+	"github.com/ilyakaznacheev/cleanenv"
+	logger "github.com/zerok-ai/zk-utils-go/logs"
 	logsConfig "github.com/zerok-ai/zk-utils-go/logs/config"
 	zkconfig "github.com/zerok-ai/zk-utils-go/storage/redis/config"
+	"os"
 )
 
 type ExceptionConfig struct {
@@ -44,8 +47,17 @@ type OtlpConfig struct {
 	Resources         ResourceConfig        `yaml:"resources"`
 }
 
-func CreateConfig() *OtlpConfig {
+const LOG_TAG = "Config"
+
+func CreateConfig(configPath string) *OtlpConfig {
 	//TODO: Change this code to read from config file.
+	var cfg OtlpConfig
+
+	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+		logger.Error(LOG_TAG, err)
+		os.Exit(2)
+	}
 	logC := logsConfig.LogsConfig{Level: "DEBUG", Color: true}
-	return &OtlpConfig{Logs: logC}
+	cfg.Logs = logC
+	return &cfg
 }

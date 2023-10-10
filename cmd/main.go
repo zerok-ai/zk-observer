@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
@@ -12,14 +15,21 @@ import (
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 	"net"
+	"os"
 )
 
 var mainLogTag = "main"
 var ctx = context.Background()
 
-func main() {
+type Args struct {
+	ConfigPath string
+}
 
-	otlpConfig := config.CreateConfig()
+func main() {
+	var cfg Args
+	args := ProcessArgs(&cfg)
+
+	otlpConfig := config.CreateConfig(args.ConfigPath)
 
 	if err := zkconfig.ProcessArgs(otlpConfig); err != nil {
 		logger.Error(mainLogTag, "Unable to process wsp client config. Stopping wsp client.")
@@ -93,4 +103,23 @@ func newApp() *iris.Application {
 	app.AllowMethods(iris.MethodOptions)
 
 	return app
+}
+
+func ProcessArgs(cfg interface{}) Args {
+	// ProcessArgs processes and handles CLI arguments
+	var a Args
+
+	f := flag.NewFlagSet("Example server", 1)
+	f.StringVar(&a.ConfigPath, "c", "config.yaml", "Path to configuration file")
+
+	fu := f.Usage
+	f.Usage = func() {
+		fu()
+		envHelp, _ := cleanenv.GetDescription(cfg, nil)
+		fmt.Fprintln(f.Output())
+		fmt.Fprintln(f.Output(), envHelp)
+	}
+
+	f.Parse(os.Args[1:])
+	return a
 }
