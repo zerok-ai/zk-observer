@@ -6,7 +6,6 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
@@ -68,7 +67,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore stores.Ex
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails) (WorkloadIdList, []model.GroupByValues) {
+func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) (WorkloadIdList, []model.GroupByValues) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "Recovered from panic: ", r)
@@ -82,7 +81,6 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails) (W
 			logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
 		satisfiedWorkLoadIds = h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
 		groupByValues = h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds)
 	}

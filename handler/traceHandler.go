@@ -154,19 +154,22 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
+				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
+
 				if len(schemaUrl) == 0 {
 					schemaUrl = DefaultNodeJsSchemaUrl
 				}
 				spanDetails.SchemaVersion = utils.GetSchemaVersion(schemaUrl)
 
 				executorAttrStore := *th.factory.GetExecutorAttrStore()
-				spanProtocolUtil := utils.NewSpanProtocolUtil(spanDetails, executorAttrStore)
+				podDetailsStore := *th.factory.GetPodDetailsStore()
+				spanProtocolUtil := utils.NewSpanProtocolUtil(spanDetails, spanDetailsMap, executorAttrStore, podDetailsStore)
 				spanDetails.Protocol = spanProtocolUtil.DetectSpanProtocol()
 				spanProtocolUtil.AddSpanProtocolProperties()
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(spanDetails)
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(spanDetails, spanDetailsMap)
 				spanDetails.WorkloadIdList = workloadIds
 				spanDetails.GroupBy = groupBy
 

@@ -11,11 +11,11 @@ const (
 )
 
 func (s SpanProtocolUtil) AddHTTPSpanProperties() {
-	s.spanDetails.Method = *GetSpanAttributeValue[string](HTTPMethodAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Route = *GetSpanAttributeValue[string](HTTPRouteAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Scheme = *GetSpanAttributeValue[string](HTTPSchemeAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Path = *GetSpanAttributeValue[string](HTTPPathAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Query = *GetSpanAttributeValue[string](HTTPQueryAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Status = *GetSpanAttributeValue[int](HTTPStatusAttrId, s.spanDetails, s.executorAttrStore)
-	s.spanDetails.Username = *GetSpanAttributeValue[string](HTTPUsernameAttrId, s.spanDetails, s.executorAttrStore)
+	s.spanDetails.Method = *GetSpanAttributeValue[string](HTTPMethodAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Route = *GetSpanAttributeValue[string](HTTPRouteAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Scheme = *GetSpanAttributeValue[string](HTTPSchemeAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Path = *GetSpanAttributeValue[string](HTTPPathAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Query = *GetSpanAttributeValue[string](HTTPQueryAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Status = *GetSpanAttributeValue[int](HTTPStatusAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
+	s.spanDetails.Username = *GetSpanAttributeValue[string](HTTPUsernameAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory)
 }

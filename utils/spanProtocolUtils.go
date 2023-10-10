@@ -2,6 +2,8 @@ package utils
 
 import (
 	"github.com/zerok-ai/zk-otlp-receiver/model"
+	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
+	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 )
 
@@ -14,19 +16,24 @@ var DetectSpanProtocolMap = map[AttributeID]model.ProtocolType{
 
 type SpanProtocolUtil struct {
 	spanDetails       model.OTelSpanDetails
+	spanDetailsMap    map[string]interface{}
 	executorAttrStore stores.ExecutorAttrStore
+	functionFactory   *functions.FunctionFactory
 }
 
-func NewSpanProtocolUtil(spanDetails model.OTelSpanDetails, executorAttrStore stores.ExecutorAttrStore) SpanProtocolUtil {
+func NewSpanProtocolUtil(spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, podDetailsStore stores.LocalCacheHSetStore) SpanProtocolUtil {
+	ff := functions.NewFunctionFactory(podDetailsStore)
 	return SpanProtocolUtil{
 		spanDetails:       spanDetails,
+		spanDetailsMap:    spanDetailsMap,
 		executorAttrStore: executorAttrStore,
+		functionFactory:   ff,
 	}
 }
 
 func (s SpanProtocolUtil) DetectSpanProtocol() model.ProtocolType {
 	for attributeId, protocol := range DetectSpanProtocolMap {
-		if val := GetSpanAttributeValue[string](attributeId, s.spanDetails, s.executorAttrStore); val != nil {
+		if val, ok := evaluator.GetValueFromStore(string(attributeId), s.spanDetailsMap, s.functionFactory); ok && val != nil {
 			return protocol
 		}
 	}
