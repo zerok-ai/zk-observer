@@ -107,7 +107,7 @@ func (th *TraceHandler) PushDataToRedis() error {
 
 	th.traceStore.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
-		spanDetails := value.(map[string]interface{})
+		spanDetails := value.(model.OTelSpanDetails)
 		//Split keyStr using delimiter.
 		ids := strings.Split(keyStr, delimiter)
 		if len(ids) == 2 {
