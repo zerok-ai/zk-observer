@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"time"
 )
@@ -33,7 +34,7 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 	return handler, nil
 }
 
-func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails map[string]interface{}) error {
+func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails model.OTelSpanDetails) error {
 
 	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {
