@@ -6,9 +6,12 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/podDetails"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"strings"
@@ -26,9 +29,10 @@ type TraceHandler struct {
 	resourceDetailsHandler *redis.ResourceRedisHandler
 	otlpConfig             *config.OtlpConfig
 	spanFilteringHandler   *redis.SpanFilteringHandler
+	factory                stores.StoreFactory
 }
 
-func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
+func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
 	if err != nil {
@@ -48,12 +52,15 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 		return nil, err
 	}
 
+	executorAttrStore := *factory.GetExecutorAttrStore()
+	podDetailsStore := *factory.GetPodDetailsStore()
+
 	handler.resourceDetailsHandler = resourceHandler
 	handler.exceptionHandler = exceptionHandler
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
-	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config)
+	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
 		return nil, err
@@ -64,7 +71,6 @@ func NewTraceHandler(config *config.OtlpConfig) (*TraceHandler, error) {
 }
 
 func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
-
 	// Read the request body
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
@@ -148,21 +154,20 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
 				if len(schemaUrl) == 0 {
-					language, ok := resourceAttrMap[common.ResourceLanguageKey]
-					if ok {
-						languageStr := language.(string)
-						if languageStr == "nodejs" {
-							schemaUrl = DefaultNodeJsSchemaUrl
-						}
-					}
+					schemaUrl = DefaultNodeJsSchemaUrl
 				}
+				spanDetails.SchemaVersion = utils.GetSchemaVersion(schemaUrl)
 
-				spanDetails["schema_version"] = utils.GetSchemaVersion(schemaUrl)
+				executorAttrStore := *th.factory.GetExecutorAttrStore()
+				spanProtocolUtil := utils.NewSpanProtocolUtil(spanDetails, executorAttrStore)
+				spanDetails.Protocol = spanProtocolUtil.DetectSpanProtocol()
+				spanProtocolUtil.AddSpanProtocolProperties()
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
-				workloadIds := th.spanFilteringHandler.FilterSpans(spanDetails, traceId)
-				spanDetails[common.SatisfiedWorkloadIdsKey] = workloadIds
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(spanDetails)
+				spanDetails.WorkloadIdList = workloadIds
+				spanDetails.GroupBy = groupBy
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
@@ -177,62 +182,55 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 	}
 }
 
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}) map[string]interface{} {
-	spanDetail := map[string]interface{}{}
-	parentSpanId := hex.EncodeToString(span.ParentSpanId)
-	if len(parentSpanId) == 0 {
-		parentSpanId = "0000000000000000"
-	}
-	spanDetail[common.ParentSpanIdKey] = parentSpanId
-	spanKind := utils.GetSpanKind(span.Kind)
-	spanDetail[common.SpanKindKey] = spanKind
+// Populate Span common properties.
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}) model.OTelSpanDetails {
+	spanDetail := model.OTelSpanDetails{}
+	spanDetail.TraceId = hex.EncodeToString(span.TraceId)
+	spanDetail.SpanId = hex.EncodeToString(span.SpanId)
+	spanDetail.SetParentSpanId(hex.EncodeToString(span.ParentSpanId))
+	spanDetail.SpanKind = utils.GetSpanKind(span.Kind)
+	spanDetail.StartNs = span.StartTimeUnixNano
+	spanDetail.LatencyNs = span.EndTimeUnixNano - span.StartTimeUnixNano
 
 	attrMap := utils.ConvertKVListToMap(span.Attributes)
+	if th.otlpConfig.SetSpanAttributes {
+		spanDetail.Attributes = attrMap
+	}
 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
-			if event.Name == "exception" {
+			if event.Name == common.OTelSpanEventException {
 				spanExceptionDetails := th.createExceptionDetails(span, event)
-				existingErrorDetails, ok := spanDetail["errors"].([]map[string]interface{})
-				if !ok {
-					existingErrorDetails = []map[string]interface{}{}
-				}
-				existingErrorDetails = append(existingErrorDetails, spanExceptionDetails)
-				spanDetail["errors"] = existingErrorDetails
+				spanDetail.Errors = append(spanDetail.Errors, spanExceptionDetails)
 			}
 		}
 	}
 
-	if th.otlpConfig.SetSpanAttributes {
-		spanDetail[common.AttributesKey] = attrMap
-	}
-
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanKind, attrMap, resourceAttrMap)
-
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, resourceAttrMap)
+	podDetailsStore := *th.factory.GetPodDetailsStore()
 	if len(sourceIp) > 0 {
-		spanDetail[common.SourceIpKey] = sourceIp
+		spanDetail.SourceIp = sourceIp
+		spanDetail.Source = podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
 	}
 	if len(destIp) > 0 {
-		spanDetail[common.DestIpKey] = destIp
+		spanDetail.DestIp = destIp
+		spanDetail.Destination = podDetails.GetServiceNameFromPodDetailsStore(destIp, podDetailsStore)
 	}
-
-	spanDetail[common.StartNsKey] = span.StartTimeUnixNano
-	spanDetail[common.LatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
 
 	return spanDetail
 }
 
-func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev1.Span_Event) map[string]interface{} {
+func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev1.Span_Event) model.SpanErrorInfo {
 	exceptionDetails := redis.CreateExceptionDetails(event)
 	spanIdStr := hex.EncodeToString(span.SpanId)
 	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
 	}
-	spanExceptionDetails := map[string]interface{}{}
-	spanExceptionDetails["error_type"] = "exception"
-	spanExceptionDetails["hash"] = hash
-	spanExceptionDetails["exception_type"] = exceptionDetails.Type
-	spanExceptionDetails["message"] = exceptionDetails.Message
+	spanExceptionDetails := model.SpanErrorInfo{}
+	spanExceptionDetails.ErrorType = model.ErrorTypeException
+	spanExceptionDetails.Hash = hash
+	spanExceptionDetails.ExceptionType = exceptionDetails.Type
+	spanExceptionDetails.Message = exceptionDetails.Message
 	return spanExceptionDetails
 }

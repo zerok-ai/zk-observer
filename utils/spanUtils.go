@@ -2,7 +2,9 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
@@ -184,7 +186,7 @@ func GetK8sClient() (*kubernetes.Clientset, error) {
 }
 
 func GetSchemaVersion(schemaUrl string) string {
-	schemaVersion := ""
+	schemaVersion := common.DefaultSchemaVersion
 	if len(schemaUrl) > 0 {
 		values := strings.Split(schemaUrl, "/")
 		if len(values) > 0 {
@@ -192,4 +194,19 @@ func GetSchemaVersion(schemaUrl string) string {
 		}
 	}
 	return schemaVersion
+}
+
+func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]interface{} {
+	spanDetailMap := map[string]interface{}{}
+
+	// Json marshal spanDetails.
+	spanDetailsJSON, err := json.Marshal(spanDetails)
+	if err != nil {
+		logger.Error(spanUtilsLogTag, "Error encoding spanDetails ", err)
+		return spanDetailMap
+	}
+
+	// Json unmarshal spanDetails.
+	err = json.Unmarshal(spanDetailsJSON, &spanDetailMap)
+	return spanDetailMap
 }

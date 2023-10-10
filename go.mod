@@ -6,11 +6,12 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231008131101-3c8f9a1a5428
+	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231010102309-7b4540c790ad
 	go.opentelemetry.io/proto/otlp v1.0.0
 	google.golang.org/grpc v1.58.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 )
 
 require (
@@ -94,7 +95,6 @@ require (
 	k8s.io/api v0.28.2 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230928205116-a78145627833 // indirect
-	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
