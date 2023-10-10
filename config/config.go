@@ -50,7 +50,6 @@ type OtlpConfig struct {
 const LOG_TAG = "Config"
 
 func CreateConfig(configPath string) *OtlpConfig {
-	//TODO: Change this code to read from config file.
 	var cfg OtlpConfig
 
 	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {

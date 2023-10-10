@@ -26,13 +26,12 @@ type Args struct {
 }
 
 func main() {
-	var cfg Args
-	args := ProcessArgs(&cfg)
+	var appArgs Args
+	args := ProcessArgs(&appArgs)
 
 	otlpConfig := config.CreateConfig(args.ConfigPath)
-
 	if err := zkconfig.ProcessArgs(otlpConfig); err != nil {
-		logger.Error(mainLogTag, "Unable to process wsp client config. Stopping wsp client.")
+		logger.Error(mainLogTag, "Unable to process service config.")
 		return
 	}
 

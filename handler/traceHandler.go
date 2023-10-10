@@ -60,6 +60,7 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*T
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
+	handler.factory = factory
 	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
