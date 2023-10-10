@@ -33,7 +33,8 @@ func NewSpanProtocolUtil(spanDetails model.OTelSpanDetails, spanDetailsMap map[s
 
 func (s SpanProtocolUtil) DetectSpanProtocol() model.ProtocolType {
 	for attributeId, protocol := range DetectSpanProtocolMap {
-		if val, ok := evaluator.GetValueFromStore(string(attributeId), s.spanDetailsMap, s.functionFactory); ok && val != nil {
+		attrPath := GetAttributePath(attributeId, s.spanDetailsMap, s.executorAttrStore)
+		if val, ok := evaluator.GetValueFromStore(attrPath, s.spanDetailsMap, s.functionFactory); ok && val != nil {
 			return protocol
 		}
 	}

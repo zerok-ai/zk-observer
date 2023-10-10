@@ -6,6 +6,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
@@ -99,8 +100,10 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 		// check if groupByItem.WorkloadId is present in satisfiedWorkLoadIds
 		if slices.Contains(satisfiedWorkLoadIds, groupByItem.WorkloadId) {
 			//Getting title and hash from executor attributes
-			titleVal, _ := evaluator.GetValueFromStore(groupByItem.Title, spanDetailsMap, ff)
-			hashVal, _ := evaluator.GetValueFromStore(groupByItem.Hash, spanDetailsMap, ff)
+			titlePath := utils.GetAttributePath(utils.AttributeID(groupByItem.Title), spanDetailsMap, h.executorAttrStore)
+			hashPath := utils.GetAttributePath(utils.AttributeID(groupByItem.Hash), spanDetailsMap, h.executorAttrStore)
+			titleVal, _ := evaluator.GetValueFromStore(titlePath, spanDetailsMap, ff)
+			hashVal, _ := evaluator.GetValueFromStore(hashPath, spanDetailsMap, ff)
 			groupByValues = append(groupByValues, model.GroupByValues{
 				WorkloadId: groupByItem.WorkloadId,
 				Title:      titleVal.(string),

@@ -15,8 +15,20 @@ func getExecutorAttrProtocol(protocolType OTlpSpanModel.ProtocolType) ExecutorMo
 	return ExecutorModel.ProtocolGeneral
 }
 
-func GetSpanAttributeValue[T string | int | float64 | int64](attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory) *T {
-	if value, ok := evaluator.GetValueFromStore(string(attributeId), spanDetailsMap, functionFactory); ok && value != nil {
+func GetSchemaVersionFromSpanDetailsMap(spanDetailsMap map[string]interface{}) string {
+	schemaVersion, _ := spanDetailsMap["schema_version"].(string)
+	return schemaVersion
+}
+
+func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore) string {
+	schemaVersion := GetSchemaVersionFromSpanDetailsMap(spanDetailsMap)
+	attributePath := *executorAttrStore.Get(ExecutorModel.ExecutorOTel, schemaVersion, "*", string(attributeId))
+	return attributePath
+}
+
+func GetSpanAttributeValue[T string | int | float64 | int64](attrId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory) *T {
+	attrPath := GetAttributePath(attrId, spanDetailsMap, executorAttrStore)
+	if value, ok := evaluator.GetValueFromStore(attrPath, spanDetailsMap, functionFactory); ok && value != nil {
 		return value.(*T)
 	}
 	return nil
