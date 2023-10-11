@@ -10,6 +10,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/podDetails"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -213,14 +214,14 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	}
 
 	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, resourceAttrMap)
-	//podDetailsStore := th.factory.GetPodDetailsStore()
+	podDetailsStore := th.factory.GetPodDetailsStore()
 	if len(sourceIp) > 0 {
 		spanDetail.SourceIp = sourceIp
-		//spanDetail.Source = podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
+		spanDetail.Source = podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
 	}
 	if len(destIp) > 0 {
 		spanDetail.DestIp = destIp
-		//spanDetail.Destination = podDetails.GetServiceNameFromPodDetailsStore(destIp, podDetailsStore)
+		spanDetail.Destination = podDetails.GetServiceNameFromPodDetailsStore(destIp, podDetailsStore)
 	}
 
 	return spanDetail

@@ -62,14 +62,14 @@ type GroupByValues struct {
 	Hash       string `json:"hash"`
 }
 
-func (s OTelSpanDetails) SetParentSpanId(parentSpanId string) {
+func (s *OTelSpanDetails) SetParentSpanId(parentSpanId string) {
 	if len(parentSpanId) == 0 {
 		parentSpanId = common.DefaultParentSpanId
 	}
 	s.ParentSpanId = parentSpanId
 }
 
-func (s OTelSpanDetails) GetResourceIP() string {
+func (s *OTelSpanDetails) GetResourceIP() string {
 	spanKind := s.SpanKind
 	if spanKind == SpanKindClient {
 		return s.SourceIp
