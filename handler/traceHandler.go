@@ -163,7 +163,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				executorAttrStore := *th.factory.GetExecutorAttrStore()
 				podDetailsStore := *th.factory.GetPodDetailsStore()
-				spanProtocolUtil := utils.NewSpanProtocolUtil(spanDetails, spanDetailsMap, executorAttrStore, podDetailsStore)
+				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore)
 				spanDetails.Protocol = spanProtocolUtil.DetectSpanProtocol()
 				spanProtocolUtil.AddSpanProtocolProperties()
 

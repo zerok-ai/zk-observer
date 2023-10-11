@@ -15,13 +15,13 @@ var DetectSpanProtocolMap = map[AttributeID]model.ProtocolType{
 }
 
 type SpanProtocolUtil struct {
-	spanDetails       model.OTelSpanDetails
-	spanDetailsMap    map[string]interface{}
+	spanDetails       *model.OTelSpanDetails
+	spanDetailsMap    *map[string]interface{}
 	executorAttrStore stores.ExecutorAttrStore
 	functionFactory   *functions.FunctionFactory
 }
 
-func NewSpanProtocolUtil(spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, podDetailsStore stores.LocalCacheHSetStore) SpanProtocolUtil {
+func NewSpanProtocolUtil(spanDetails *model.OTelSpanDetails, spanDetailsMap *map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, podDetailsStore stores.LocalCacheHSetStore) SpanProtocolUtil {
 	ff := functions.NewFunctionFactory(podDetailsStore)
 	return SpanProtocolUtil{
 		spanDetails:       spanDetails,
@@ -33,8 +33,8 @@ func NewSpanProtocolUtil(spanDetails model.OTelSpanDetails, spanDetailsMap map[s
 
 func (s SpanProtocolUtil) DetectSpanProtocol() model.ProtocolType {
 	for attributeId, protocol := range DetectSpanProtocolMap {
-		attrPath := GetAttributePath(attributeId, s.spanDetailsMap, s.executorAttrStore)
-		if val, ok := evaluator.GetValueFromStore(attrPath, s.spanDetailsMap, s.functionFactory); ok && val != nil {
+		attrPath := GetAttributePath(attributeId, *s.spanDetailsMap, s.executorAttrStore)
+		if val, ok := evaluator.GetValueFromStore(attrPath, *s.spanDetailsMap, s.functionFactory); ok && val != nil {
 			return protocol
 		}
 	}
