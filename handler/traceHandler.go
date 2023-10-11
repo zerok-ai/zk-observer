@@ -143,6 +143,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 	}
 	for _, resourceSpan := range resourceSpans {
 		schemaUrl := resourceSpan.SchemaUrl
+		if len(schemaUrl) == 0 {
+			schemaUrl = DefaultNodeJsSchemaUrl
+		}
+		schemaVersion := utils.GetSchemaVersion(schemaUrl)
 		resourceAttrMap := map[string]interface{}{}
 		if resourceSpan.Resource != nil {
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
@@ -154,12 +158,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
+				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
-
-				if len(schemaUrl) == 0 {
-					schemaUrl = DefaultNodeJsSchemaUrl
-				}
-				spanDetails.SchemaVersion = utils.GetSchemaVersion(schemaUrl)
 
 				executorAttrStore := *th.factory.GetExecutorAttrStore()
 				podDetailsStore := *th.factory.GetPodDetailsStore()
