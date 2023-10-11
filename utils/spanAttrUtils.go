@@ -40,6 +40,5 @@ func GetSpanAttributeValue[T string | float64](attrId AttributeID, spanDetailsMa
 			return &x
 		}
 	}
-	var x T
-	return &x
+	return nil
 }
