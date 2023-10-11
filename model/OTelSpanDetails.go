@@ -23,13 +23,13 @@ type OTelSpanDetails struct {
 	Protocol ProtocolType `json:"protocol"`
 
 	// Protocol properties.
-	Method   string `json:"method"`
-	Route    string `json:"route"`
-	Scheme   string `json:"scheme"`
-	Path     string `json:"path"`
-	Query    string `json:"query"`
-	Status   int    `json:"status"`
-	Username string `json:"username"`
+	Method   string  `json:"method"`
+	Route    string  `json:"route"`
+	Scheme   string  `json:"scheme"`
+	Path     string  `json:"path"`
+	Query    string  `json:"query"`
+	Status   float64 `json:"status"`
+	Username string  `json:"username"`
 
 	// ZeroK Properties
 	WorkloadIdList []string        `json:"workload_id_list"`
