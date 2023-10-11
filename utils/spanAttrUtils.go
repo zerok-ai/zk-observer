@@ -27,9 +27,11 @@ func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interfa
 }
 
 func GetSpanAttributeValue[T string | int | float64 | int64](attrId AttributeID, spanDetailsMap *map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory) T {
-	attrPath := GetAttributePath(attrId, *spanDetailsMap, executorAttrStore)
-	if value, ok := evaluator.GetValueFromStore(attrPath, *spanDetailsMap, functionFactory); ok && value != nil {
-		return value.(T)
+	if attrId != "" {
+		attrPath := GetAttributePath(attrId, *spanDetailsMap, executorAttrStore)
+		if value, ok := evaluator.GetValueFromStore(attrPath, *spanDetailsMap, functionFactory); ok && value != nil {
+			return value.(T)
+		}
 	}
 	var x T
 	return x
