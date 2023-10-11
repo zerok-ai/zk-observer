@@ -4,6 +4,7 @@ import (
 	OTlpSpanModel "github.com/zerok-ai/zk-otlp-receiver/model"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
+	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 )
@@ -20,16 +21,21 @@ func GetSchemaVersionFromSpanDetailsMap(spanDetailsMap map[string]interface{}) s
 	return schemaVersion
 }
 
-func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore) string {
+func GenerateAttribStoreKey(spanDetailsMap map[string]interface{}) cache.AttribStoreKey {
 	schemaVersion := GetSchemaVersionFromSpanDetailsMap(spanDetailsMap)
-	attributePath := *executorAttrStore.Get(ExecutorModel.ExecutorOTel, schemaVersion, ExecutorModel.ProtocolHTTP, string(attributeId))
+	attribKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, schemaVersion, ExecutorModel.ProtocolHTTP)
+	return attribKey
+}
+
+func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore *stores.ExecutorAttrStore) string {
+	attribKey := GenerateAttribStoreKey(spanDetailsMap)
+	attributePath := *executorAttrStore.GetAttributeFromStore(attribKey, string(attributeId))
 	return attributePath
 }
 
-func GetSpanAttributeValue[T string | float64](attrId AttributeID, spanDetailsMap *map[string]interface{}, executorAttrStore stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory) T {
+func GetSpanAttributeValue[T string | float64](attrId AttributeID, spanDetailsMap *map[string]interface{}, executorAttrStore *stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory, attribStoreKey *cache.AttribStoreKey) T {
 	if attrId != "" {
-		attrPath := GetAttributePath(attrId, *spanDetailsMap, executorAttrStore)
-		if value, ok := evaluator.GetValueFromStore(attrPath, *spanDetailsMap, functionFactory); ok && value != nil {
+		if value, ok := evaluator.GetValueFromStore(string(attrId), *spanDetailsMap, functionFactory, attribStoreKey); ok && value != nil {
 			return value.(T)
 		}
 	}

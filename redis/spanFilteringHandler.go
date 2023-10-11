@@ -30,8 +30,8 @@ type SpanFilteringHandler struct {
 	redisHandler      *RedisHandler
 	workloadDetails   sync.Map
 	ctx               context.Context
-	executorAttrStore stores.ExecutorAttrStore
-	podDetailsStore   stores.LocalCacheHSetStore
+	executorAttrStore *stores.ExecutorAttrStore
+	podDetailsStore   *stores.LocalCacheHSetStore
 }
 
 type WorkLoadTraceId struct {
@@ -41,7 +41,7 @@ type WorkLoadTraceId struct {
 
 type WorkloadIdList []string
 
-func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore stores.ExecutorAttrStore, podDetailsStore stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
+func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
 	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
@@ -95,15 +95,14 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) []model.GroupByValues {
 	groupBy := scenario.GroupBy
 	var groupByValues = make([]model.GroupByValues, 0)
-	ff := functions.NewFunctionFactory(h.podDetailsStore)
+	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
+	attribKey := utils.GenerateAttribStoreKey(spanDetailsMap)
 	for _, groupByItem := range groupBy {
 		// check if groupByItem.WorkloadId is present in satisfiedWorkLoadIds
 		if slices.Contains(satisfiedWorkLoadIds, groupByItem.WorkloadId) {
 			//Getting title and hash from executor attributes
-			titlePath := utils.GetAttributePath(utils.AttributeID(groupByItem.Title), spanDetailsMap, h.executorAttrStore)
-			hashPath := utils.GetAttributePath(utils.AttributeID(groupByItem.Hash), spanDetailsMap, h.executorAttrStore)
-			titleVal, _ := evaluator.GetValueFromStore(titlePath, spanDetailsMap, ff)
-			hashVal, _ := evaluator.GetValueFromStore(hashPath, spanDetailsMap, ff)
+			titleVal, _ := evaluator.GetValueFromStore(groupByItem.Title, spanDetailsMap, ff, &attribKey)
+			hashVal, _ := evaluator.GetValueFromStore(groupByItem.Hash, spanDetailsMap, ff, &attribKey)
 			groupByValues = append(groupByValues, model.GroupByValues{
 				WorkloadId: groupByItem.WorkloadId,
 				Title:      titleVal.(string),
@@ -131,7 +130,8 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		rule := workload.Rule
 
 		logger.Debug(spanFilteringLogTag, "Evaluating rule for scenario: ", scenario.Title, " workload id: ", id)
-		value, err := h.ruleEvaluator.EvalRule(rule, spanDetails.SchemaVersion, workload.Protocol, spanDetailsMap)
+		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap)
+		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, workload.Protocol, spanDetailsMap)
 		if err != nil {
 			logger.Error(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
 			continue

@@ -10,6 +10,8 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
+	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
@@ -51,8 +53,8 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*T
 		return nil, err
 	}
 
-	executorAttrStore := *factory.GetExecutorAttrStore()
-	podDetailsStore := *factory.GetPodDetailsStore()
+	executorAttrStore := factory.GetExecutorAttrStore()
+	podDetailsStore := factory.GetPodDetailsStore()
 
 	handler.resourceDetailsHandler = resourceHandler
 	handler.exceptionHandler = exceptionHandler
@@ -159,10 +161,11 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
+				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolHTTP)
 
-				executorAttrStore := *th.factory.GetExecutorAttrStore()
-				podDetailsStore := *th.factory.GetPodDetailsStore()
-				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore)
+				executorAttrStore := th.factory.GetExecutorAttrStore()
+				podDetailsStore := th.factory.GetPodDetailsStore()
+				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &attrStoreKey)
 				spanDetails.Protocol = spanProtocolUtil.DetectSpanProtocol()
 				spanProtocolUtil.AddSpanProtocolProperties()
 
@@ -210,7 +213,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	}
 
 	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, resourceAttrMap)
-	//podDetailsStore := *th.factory.GetPodDetailsStore()
+	//podDetailsStore := th.factory.GetPodDetailsStore()
 	if len(sourceIp) > 0 {
 		spanDetail.SourceIp = sourceIp
 		//spanDetail.Source = podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
