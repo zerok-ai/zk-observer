@@ -13,23 +13,25 @@ type OTelSpanDetails struct {
 	StartNs       uint64                 `json:"start_ns"`
 	LatencyNs     uint64                 `json:"latency_ns"`
 	SchemaVersion string                 `json:"schema_version"`
-	SourceIp      string                 `json:"source_ip"`
-	Source        string                 `json:"source"`
-	DestIp        string                 `json:"dest_ip"`
-	Destination   string                 `json:"destination"`
 	Attributes    map[string]interface{} `json:"attributes"`
 	Errors        []SpanErrorInfo        `json:"errors"`
 
 	Protocol ProtocolType `json:"protocol"`
 
+	// Network span properties
+	SourceIp    *string `json:"source_ip,omitempty"`
+	Source      *string `json:"source,omitempty"`
+	DestIp      *string `json:"dest_ip,omitempty"`
+	Destination *string `json:"destination,omitempty"`
+
 	// Protocol properties.
-	Method   string  `json:"method"`
-	Route    string  `json:"route"`
-	Scheme   string  `json:"scheme"`
-	Path     string  `json:"path"`
-	Query    string  `json:"query"`
-	Status   float64 `json:"status"`
-	Username string  `json:"username"`
+	Method   *string  `json:"method,omitempty"`
+	Route    *string  `json:"route,omitempty"`
+	Scheme   *string  `json:"scheme,omitempty"`
+	Path     *string  `json:"path,omitempty"`
+	Query    *string  `json:"query,omitempty"`
+	Status   *float64 `json:"status,omitempty"`
+	Username *string  `json:"username,omitempty"`
 
 	// ZeroK Properties
 	WorkloadIdList []string        `json:"workload_id_list"`
@@ -71,10 +73,10 @@ func (s *OTelSpanDetails) SetParentSpanId(parentSpanId string) {
 
 func (s *OTelSpanDetails) GetResourceIP() string {
 	spanKind := s.SpanKind
-	if spanKind == SpanKindClient {
-		return s.SourceIp
-	} else if spanKind == SpanKindServer {
-		return s.DestIp
+	if spanKind == SpanKindClient && s.SourceIp != nil {
+		return *s.SourceIp
+	} else if spanKind == SpanKindServer && s.DestIp != nil {
+		return *s.DestIp
 	}
 	return ""
 }

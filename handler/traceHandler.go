@@ -216,12 +216,14 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, resourceAttrMap)
 	podDetailsStore := th.factory.GetPodDetailsStore()
 	if len(sourceIp) > 0 {
-		spanDetail.SourceIp = sourceIp
-		spanDetail.Source = podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
+		spanDetail.SourceIp = &sourceIp
+		source := podDetails.GetServiceNameFromPodDetailsStore(sourceIp, podDetailsStore)
+		spanDetail.Source = &source
 	}
 	if len(destIp) > 0 {
-		spanDetail.DestIp = destIp
-		spanDetail.Destination = podDetails.GetServiceNameFromPodDetailsStore(destIp, podDetailsStore)
+		spanDetail.DestIp = &destIp
+		dest := podDetails.GetServiceNameFromPodDetailsStore(destIp, podDetailsStore)
+		spanDetail.Destination = &dest
 	}
 
 	return spanDetail
