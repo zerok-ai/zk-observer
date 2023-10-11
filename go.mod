@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.3
+	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/redis/go-redis/v9 v9.2.1
 	github.com/zerok-ai/zk-utils-go v0.4.11-0.20231010111603-f84ca86df9b9
@@ -44,7 +45,6 @@ require (
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
-	github.com/ilyakaznacheev/cleanenv v1.5.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/iris-contrib/schema v0.0.6 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
