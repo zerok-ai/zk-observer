@@ -22,7 +22,7 @@ func GetSchemaVersionFromSpanDetailsMap(spanDetailsMap map[string]interface{}) s
 
 func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore stores.ExecutorAttrStore) string {
 	schemaVersion := GetSchemaVersionFromSpanDetailsMap(spanDetailsMap)
-	attributePath := *executorAttrStore.Get(ExecutorModel.ExecutorOTel, schemaVersion, "*", string(attributeId))
+	attributePath := *executorAttrStore.Get(ExecutorModel.ExecutorOTel, schemaVersion, ExecutorModel.ProtocolHTTP, string(attributeId))
 	return attributePath
 }
 
