@@ -33,8 +33,8 @@ spec:
         image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: zk-otlp-receiver
-#        command: ["/bin/sh"]
-#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver -- -c /zk/config/config.yaml"]
+        command: ["/bin/sh"]
+        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver -- -c /zk/config/config.yaml"]
         ports:
         - containerPort: 8147
         resources: {}
