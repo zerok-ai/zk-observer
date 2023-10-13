@@ -1,5 +1,6 @@
 package utils
 
+// Ref: https://docs.google.com/spreadsheets/d/1E_MoV1mRL96hdTv2Q0o3pIAQ1hRF3-RQyF56kLagF04/edit#gid=1422911777
 const (
 	HTTPMethodAttrId   AttributeID = "http_request_method"
 	HTTPRouteAttrId    AttributeID = "http_route"

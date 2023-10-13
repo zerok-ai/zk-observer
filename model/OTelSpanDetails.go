@@ -55,6 +55,7 @@ type ProtocolType string
 
 const (
 	ProtocolTypeHTTP    ProtocolType = "HTTP"
+	ProtocolTypeDB      ProtocolType = "DB"
 	ProtocolTypeUnknown ProtocolType = "UNKNOWN"
 )
 
