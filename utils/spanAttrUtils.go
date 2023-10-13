@@ -29,7 +29,7 @@ func GenerateAttribStoreKey(spanDetailsMap map[string]interface{}) cache.AttribS
 
 func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore *stores.ExecutorAttrStore) string {
 	attribKey := GenerateAttribStoreKey(spanDetailsMap)
-	attributePath := *executorAttrStore.GetAttributeFromStore(attribKey, string(attributeId))
+	attributePath, _ := executorAttrStore.GetAttributeFromStore(attribKey, string(attributeId))
 	return attributePath
 }
 
