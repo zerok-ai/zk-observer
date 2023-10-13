@@ -101,12 +101,12 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 		// check if groupByItem.WorkloadId is present in satisfiedWorkLoadIds
 		if slices.Contains(satisfiedWorkLoadIds, groupByItem.WorkloadId) {
 			//Getting title and hash from executor attributes
-			titleVal, _ := evaluator.GetValueFromStore(groupByItem.Title, spanDetailsMap, ff, &attribKey)
-			hashVal, _ := evaluator.GetValueFromStore(groupByItem.Hash, spanDetailsMap, ff, &attribKey)
+			titleVal, _ := ff.EvaluateString(groupByItem.Title, spanDetailsMap, &attribKey)
+			hashVal, _ := ff.EvaluateString(groupByItem.Hash, spanDetailsMap, &attribKey)
 			groupByValues = append(groupByValues, model.GroupByValues{
 				WorkloadId: groupByItem.WorkloadId,
-				Title:      titleVal.(string),
-				Hash:       hashVal.(string),
+				Title:      fmt.Sprintf("%v", titleVal),
+				Hash:       fmt.Sprintf("%v", hashVal),
 			})
 		}
 	}

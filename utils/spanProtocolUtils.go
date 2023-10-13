@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -37,7 +36,7 @@ func NewSpanProtocolUtil(spanDetails *model.OTelSpanDetails, spanDetailsMap *map
 
 func (s SpanProtocolUtil) DetectSpanProtocol() model.ProtocolType {
 	for attributeId, protocol := range DetectSpanProtocolMap {
-		if val, ok := evaluator.GetValueFromStore(string(attributeId), *s.spanDetailsMap, s.functionFactory, s.attrStoreKey); ok && val != nil {
+		if val, ok := s.functionFactory.EvaluateString(string(attributeId), *s.spanDetailsMap, s.attrStoreKey); ok && val != nil {
 			return protocol
 		}
 	}
