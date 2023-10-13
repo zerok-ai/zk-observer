@@ -82,7 +82,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 			logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		satisfiedWorkLoadIds = h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
+		satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)...)
 		groupByMap = h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds)
 	}
 	err := h.syncWorkloadsToRedis()
