@@ -34,8 +34,8 @@ type OTelSpanDetails struct {
 	Username *string  `json:"username,omitempty"`
 
 	// ZeroK Properties
-	WorkloadIdList []string        `json:"workload_id_list"`
-	GroupBy        []GroupByValues `json:"group_by"`
+	WorkloadIdList []string   `json:"workload_id_list"`
+	GroupBy        GroupByMap `json:"group_by"`
 }
 
 type SpanErrorInfo struct {
@@ -58,11 +58,14 @@ const (
 	ProtocolTypeUnknown ProtocolType = "UNKNOWN"
 )
 
-type GroupByValues struct {
+type GroupByValueItem struct {
 	WorkloadId string `json:"workload_id"`
 	Title      string `json:"title"`
 	Hash       string `json:"hash"`
 }
+type GroupByValues []GroupByValueItem
+type ScenarioId string
+type GroupByMap map[ScenarioId]GroupByValues
 
 func (s *OTelSpanDetails) SetParentSpanId(parentSpanId string) {
 	if len(parentSpanId) == 0 {
