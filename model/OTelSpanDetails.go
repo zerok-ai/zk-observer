@@ -14,7 +14,7 @@ type OTelSpanDetails struct {
 	LatencyNs     uint64                 `json:"latency_ns"`
 	SchemaVersion string                 `json:"schema_version"`
 	Attributes    map[string]interface{} `json:"attributes"`
-	Errors        []SpanErrorInfo        `json:"errors"`
+	Errors        []SpanErrorInfo        `json:"errors,omitempty"`
 
 	Protocol ProtocolType `json:"protocol"`
 
@@ -34,8 +34,8 @@ type OTelSpanDetails struct {
 	Username *string  `json:"username,omitempty"`
 
 	// ZeroK Properties
-	WorkloadIdList []string   `json:"workload_id_list"`
-	GroupBy        GroupByMap `json:"group_by"`
+	WorkloadIdList []string   `json:"workload_id_list,omitempty"`
+	GroupBy        GroupByMap `json:"group_by,omitempty"`
 }
 
 type SpanErrorInfo struct {

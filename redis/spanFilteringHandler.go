@@ -75,8 +75,8 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 		}
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
-	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
-	var groupByMap = make(model.GroupByMap)
+	var satisfiedWorkLoadIds WorkloadIdList
+	var groupByMap model.GroupByMap
 	for _, scenario := range scenarios {
 		if scenario == nil {
 			logger.Debug(spanFilteringLogTag, "No scenario found")
@@ -84,8 +84,14 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 		}
 		processedWorkloadIds := h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
 		if len(processedWorkloadIds) > 0 {
+			if satisfiedWorkLoadIds == nil {
+				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
+			}
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, processedWorkloadIds...)
 			if groupByValues, hasData := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
+				if groupByMap == nil {
+					groupByMap = make(model.GroupByMap)
+				}
 				groupByMap[model.ScenarioId(scenario.Id)] = groupByValues
 			}
 		}
