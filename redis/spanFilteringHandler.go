@@ -112,11 +112,14 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 			//Getting title and hash from executor attributes
 			titleVal, _ := ff.EvaluateString(groupByItem.Title, spanDetailsMap, &attribKey)
 			hashVal, _ := ff.EvaluateString(groupByItem.Hash, spanDetailsMap, &attribKey)
-			groupByValues[idx] = model.GroupByValueItem{
+			groupByValues[idx] = &model.GroupByValueItem{
 				WorkloadId: groupByItem.WorkloadId,
 				Title:      fmt.Sprintf("%v", titleVal),
 				Hash:       fmt.Sprintf("%v", hashVal),
 			}
+		} else {
+			logger.Debug(spanFilteringLogTag, "WorkloadId ", groupByItem.WorkloadId, " not present in satisfiedWorkLoadIds")
+			groupByValues[idx] = nil
 		}
 	}
 	return &groupByMap

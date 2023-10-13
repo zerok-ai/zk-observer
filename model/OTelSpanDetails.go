@@ -63,7 +63,7 @@ type GroupByValueItem struct {
 	Title      string `json:"title"`
 	Hash       string `json:"hash"`
 }
-type GroupByValues []GroupByValueItem
+type GroupByValues []*GroupByValueItem
 type ScenarioId string
 type GroupByMap map[ScenarioId]GroupByValues
 
