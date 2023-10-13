@@ -71,7 +71,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) (WorkloadIdList, []model.GroupByValues) {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error(spanFilteringLogTag, "Recovered from panic: ", r)
+			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
 		}
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
@@ -93,6 +93,12 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 }
 
 func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) []model.GroupByValues {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error(spanFilteringLogTag, "processGroupBy: Recovered from panic: ", r)
+		}
+	}()
+
 	groupBy := scenario.GroupBy
 	var groupByValues = make([]model.GroupByValues, 0)
 	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
