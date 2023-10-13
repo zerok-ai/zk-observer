@@ -82,10 +82,12 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 			logger.Debug(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)...)
-		groupByValues := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds)
-		if len(groupByValues) != 0 {
-			groupByMap[model.ScenarioId(scenario.Id)] = groupByValues
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
+		if len(processedWorkloadIds) > 0 {
+			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, processedWorkloadIds...)
+			if groupByValues, hasData := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
+				groupByMap[model.ScenarioId(scenario.Id)] = groupByValues
+			}
 		}
 	}
 	err := h.syncWorkloadsToRedis()
@@ -95,12 +97,14 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 	return satisfiedWorkLoadIds, groupByMap
 }
 
-func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) model.GroupByValues {
+func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (model.GroupByValues, bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "processGroupBy: Recovered from panic: ", r)
 		}
 	}()
+
+	var hasValueForScenario = false
 	var groupByValues = make(model.GroupByValues, len(scenario.GroupBy))
 	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
 	attribKey := utils.GenerateAttribStoreKey(spanDetailsMap)
@@ -116,12 +120,13 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 				Title:      fmt.Sprintf("%v", titleVal),
 				Hash:       fmt.Sprintf("%v", hashVal),
 			}
+			hasValueForScenario = true
 		} else {
 			logger.Debug(spanFilteringLogTag, "WorkloadId ", groupByItem.WorkloadId, " not present in satisfiedWorkLoadIds")
 			groupByValues[idx] = nil
 		}
 	}
-	return groupByValues
+	return groupByValues, hasValueForScenario
 }
 
 func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) WorkloadIdList {
