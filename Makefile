@@ -8,11 +8,11 @@ ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
 NAME = zk-otlp-receiver
 
-sync:
+sync: zkSync
 	go clean --cache
 	go get -v ./...
-megaSync:
-	go get -u github.com/zerok-ai/zk-utils-go@feature/eval_filter
+zkSync:
+	go get -u github.com/zerok-ai/zk-utils-go@v0.5.0
 	go mod vendor
 	go mod tidy
 
