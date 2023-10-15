@@ -12,6 +12,7 @@ type AttributeID string
 // DetectSpanProtocolMap Mapping of span attributes to protocol type.
 var DetectSpanProtocolMap = map[AttributeID]model.ProtocolType{
 	HTTPMethodAttrId: model.ProtocolTypeHTTP,
+	DBSystemAttrId:   model.ProtocolTypeDB,
 }
 
 type SpanProtocolUtil struct {

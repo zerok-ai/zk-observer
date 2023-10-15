@@ -21,7 +21,7 @@ type OTelSpanDetails struct {
 	// Network span properties
 	SourceIp    *string `json:"source_ip,omitempty"`
 	Source      *string `json:"source,omitempty"`
-	DestIp      *string `json:"dest_ip,omitempty"`
+	DestIp      *string `json:"destination_ip,omitempty"`
 	Destination *string `json:"destination,omitempty"`
 
 	// Protocol properties.
@@ -55,6 +55,7 @@ type ProtocolType string
 
 const (
 	ProtocolTypeHTTP    ProtocolType = "HTTP"
+	ProtocolTypeDB      ProtocolType = "DB"
 	ProtocolTypeUnknown ProtocolType = "UNKNOWN"
 )
 
