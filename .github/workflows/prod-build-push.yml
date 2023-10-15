@@ -24,7 +24,7 @@ jobs:
       DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
 
   build-push:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push-multiarch.yml@main
     with:
       VERSION: ${{ needs.init.outputs.VERSION }}
       ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}

@@ -1,5 +1,20 @@
-FROM golang:1.18-alpine
+FROM alpine:latest
 WORKDIR /zk
-COPY zk-otlp-receiver .
-#RUN ["go", "install", "github.com/go-delve/delve/cmd/dlv@master"]
-CMD ["/zk/zk-otlp-receiver","-c","/zk/config/config.yaml"]
+
+# base name of the executable e.g. "zk-scenario-manager"
+ENV exeBaseName="zk-otlp-receiver"
+
+# full path to the all the executables
+ENV exeAMD64="${exeBaseName}-amd64"
+ENV exeARM64="${exeBaseName}-arm64"
+
+# copy the executables
+COPY *"bin/$exeAMD64" .
+COPY *"bin/$exeARM64" .
+
+# copy the start script
+COPY app-start.sh .
+RUN chmod +x app-start.sh
+
+# call the start script
+CMD ["sh","-c","./app-start.sh --amd64 ${exeAMD64} --arm64 ${exeARM64} -c config/config.yaml"]
