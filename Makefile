@@ -12,9 +12,10 @@ sync:
 	go clean --cache
 	go get -v ./...
 zkSync:
+	go clean -modcache
+	go mod tidy
 	go get -u github.com/zerok-ai/zk-utils-go@v0.5.0
 	go mod vendor
-	go mod tidy
 
 build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(NAME) cmd/main.go
