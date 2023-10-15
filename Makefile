@@ -9,10 +9,12 @@ IMG_VER = $(ART_Repo_URI):$(VERSION)
 NAME = zk-otlp-receiver
 
 sync:
+	go clean --cache
 	go get -v ./...
 megaSync:
 	go get -u github.com/zerok-ai/zk-utils-go@feature/eval_filter
 	go mod vendor
+	go mod tidy
 
 build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(NAME) cmd/main.go
