@@ -9,9 +9,9 @@ IMG_VER = $(ART_Repo_URI):$(VERSION)
 NAME = zk-otlp-receiver
 
 sync:
-	go clean --cache
 	go get -v ./...
 zkSync:
+	go clean --cache
 	go clean -modcache
 	go mod tidy
 	go get -u github.com/zerok-ai/zk-utils-go@v0.5.0
