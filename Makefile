@@ -8,7 +8,7 @@ ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
 NAME = zk-otlp-receiver
 
-sync: zkSync
+sync:
 	go clean --cache
 	go get -v ./...
 zkSync:
@@ -23,5 +23,5 @@ buildAndPush: build
 	docker build -t ${IMG_VER} .
 	docker push ${IMG_VER}
 
-ci-cd-build: sync
+ci-cd-build: sync zkSync
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o $(NAME) cmd/main.go
