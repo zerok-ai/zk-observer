@@ -19,4 +19,5 @@ buildAndPush: build
 	docker push ${IMG_VER}
 
 ci-cd-build: sync
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o $(NAME) cmd/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o bin/$(NAME)-amd64 cmd/main.go
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o bin/$(NAME)-arm64 cmd/main.go
