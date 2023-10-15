@@ -1,2 +1,4 @@
 .idea/
 vendor/
+zk-otlp-receiver
+bin/

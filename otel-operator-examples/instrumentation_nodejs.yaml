@@ -1,0 +1,20 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: demo-instrumentation-nodejs
+spec:
+  exporter:
+    endpoint: http://opentelemetry-collector.default.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+  nodejs:
+    env:
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: none
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_LOG_LEVEL
+        value: DEBUG

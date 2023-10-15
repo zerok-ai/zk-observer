@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helm-charts.fullname" . }}-zk-otlp-receiver
+  labels:
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.type }}
+  selector:
+    app: zk-otlp-receiver
+  {{- include "helm-charts.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.ports | toYaml | nindent 2 -}}
