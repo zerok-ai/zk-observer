@@ -7,7 +7,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.5.7
+	github.com/zerok-ai/zk-utils-go v0.5.8
 	go.opentelemetry.io/proto/otlp v1.0.0
 	google.golang.org/grpc v1.58.2
 	k8s.io/apimachinery v0.28.2
