@@ -20,16 +20,10 @@ func GetSchemaVersionFromSpanDetailsMap(spanDetailsMap map[string]interface{}) s
 	return schemaVersion
 }
 
-func GenerateAttribStoreKey(spanDetailsMap map[string]interface{}) cache.AttribStoreKey {
+func GenerateAttribStoreKey(spanDetailsMap map[string]interface{}, protocol ExecutorModel.ProtocolName) cache.AttribStoreKey {
 	schemaVersion := GetSchemaVersionFromSpanDetailsMap(spanDetailsMap)
-	attribKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, schemaVersion, ExecutorModel.ProtocolHTTP)
+	attribKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, schemaVersion, protocol)
 	return attribKey
-}
-
-func GetAttributePath(attributeId AttributeID, spanDetailsMap map[string]interface{}, executorAttrStore *stores.ExecutorAttrStore) string {
-	attribKey := GenerateAttribStoreKey(spanDetailsMap)
-	attributePath, _ := executorAttrStore.GetAttributeFromStore(attribKey, string(attributeId))
-	return attributePath
 }
 
 func GetSpanAttributeValue[T string | float64](attrId AttributeID, spanDetailsMap *map[string]interface{}, executorAttrStore *stores.ExecutorAttrStore, functionFactory *functions.FunctionFactory, attribStoreKey *cache.AttribStoreKey) *T {

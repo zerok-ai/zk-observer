@@ -113,9 +113,10 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 	var hasValueForScenario = false
 	var groupByValues = make(model.GroupByValues, len(scenario.GroupBy))
 	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
-	attribKey := utils.GenerateAttribStoreKey(spanDetailsMap)
 
 	for idx, groupByItem := range scenario.GroupBy {
+		protocol := getProtocolForWorkloadId(groupByItem.WorkloadId, scenario)
+		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, protocol)
 		// check if groupByItem.WorkloadId is present in satisfiedWorkLoadIds
 		if slices.Contains(satisfiedWorkLoadIds, groupByItem.WorkloadId) {
 			//Getting title and hash from executor attributes
@@ -135,6 +136,14 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 	return groupByValues, hasValueForScenario
 }
 
+func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkmodel.ProtocolName {
+	workload, ok := (*scenario.Workloads)[workloadID]
+	if !ok {
+		return zkmodel.ProtocolHTTP
+	}
+	return workload.Protocol
+}
+
 func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
@@ -152,8 +161,8 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		rule := workload.Rule
 
 		logger.Debug(spanFilteringLogTag, "Evaluating rule for scenario: ", scenario.Title, " workload id: ", id)
-		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap)
-		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, workload.Protocol, spanDetailsMap)
+		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, workload.Protocol)
+		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, spanDetailsMap)
 		if err != nil {
 			logger.Error(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
 			continue
