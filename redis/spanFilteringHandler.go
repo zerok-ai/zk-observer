@@ -57,7 +57,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	handler := SpanFilteringHandler{
 		VersionedStore:    store,
 		Cfg:               cfg,
-		ruleEvaluator:     *evaluator.NewRuleEvaluator(zkmodel.ExecutorOTel, executorAttrStore, podDetailsStore),
+		ruleEvaluator:     *evaluator.NewRuleEvaluator(executorAttrStore, podDetailsStore),
 		workloadDetails:   sync.Map{},
 		ctx:               context.Background(),
 		redisHandler:      redisHandler,
