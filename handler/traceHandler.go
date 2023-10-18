@@ -162,7 +162,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
-				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolHTTP)
+				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
+				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
 
 				executorAttrStore := th.factory.GetExecutorAttrStore()
 				podDetailsStore := th.factory.GetPodDetailsStore()

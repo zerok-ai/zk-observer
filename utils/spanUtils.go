@@ -7,6 +7,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -194,6 +195,15 @@ func GetSchemaVersion(schemaUrl string) string {
 		}
 	}
 	return schemaVersion
+}
+
+func GetExecutorProtocolFromSpanProtocol(spanProtocol model.ProtocolType) zkmodel.ProtocolName {
+	if spanProtocol == model.ProtocolTypeHTTP {
+		return zkmodel.ProtocolHTTP
+	} else if spanProtocol == model.ProtocolTypeGRPC {
+		return zkmodel.ProtocolGRPC
+	}
+	return zkmodel.ProtocolGeneral
 }
 
 func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]interface{} {
