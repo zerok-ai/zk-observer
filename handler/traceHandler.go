@@ -166,9 +166,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				/* Detect Span protocol */
 				executorAttrStore := th.factory.GetExecutorAttrStore()
 				podDetailsStore := th.factory.GetPodDetailsStore()
-				generalAttrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolGeneral)
-				generalProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &generalAttrStoreKey)
-				spanDetails.Protocol = generalProtocolUtil.DetectSpanProtocol()
+				protocolIdentifierStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolIdentifier)
+				identifierProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &protocolIdentifierStoreKey)
+				spanDetails.Protocol = identifierProtocolUtil.DetectSpanProtocol()
 
 				/* Populate Span protocol attributes */
 				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
