@@ -162,13 +162,18 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
-				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
-				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
 
+				/* Detect Span protocol */
 				executorAttrStore := th.factory.GetExecutorAttrStore()
 				podDetailsStore := th.factory.GetPodDetailsStore()
+				generalAttrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolGeneral)
+				generalProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &generalAttrStoreKey)
+				spanDetails.Protocol = generalProtocolUtil.DetectSpanProtocol()
+
+				/* Populate Span protocol attributes */
+				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
+				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
 				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &attrStoreKey)
-				spanDetails.Protocol = spanProtocolUtil.DetectSpanProtocol()
 				spanProtocolUtil.AddSpanProtocolProperties()
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
