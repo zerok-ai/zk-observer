@@ -16,5 +16,8 @@ COPY *"bin/$exeARM64" .
 COPY app-start.sh .
 RUN chmod +x app-start.sh
 
+# install delve
+RUN apk add delve
+
 # call the start script
 CMD ["sh","-c","./app-start.sh --amd64 ${exeAMD64} --arm64 ${exeARM64} -c config/config.yaml"]
