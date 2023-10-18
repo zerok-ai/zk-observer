@@ -164,7 +164,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, workload.Protocol)
 		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, spanDetailsMap)
 		if err != nil {
-			logger.Error(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
+			logger.Warn(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
 			continue
 		}
 		if value {

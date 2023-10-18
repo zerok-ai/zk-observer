@@ -19,7 +19,7 @@ func (s SpanProtocolUtil) AddGRPCSpanProperties() {
 	s.spanDetails.Route = GetSpanAttributeValue[string](GRPCRouteAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
 	s.spanDetails.Scheme = GetSpanAttributeValue[string](GRPCSchemeAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
 	s.spanDetails.Path = GetSpanAttributeValue[string](GRPCPathAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
-	s.spanDetails.Query = GetSpanAttributeValue[string](GRPCSystemAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
+	s.spanDetails.Query = GetSpanAttributeValue[string](GRPCQueryAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
 	s.spanDetails.Status = GetSpanAttributeValue[float64](GRPCStatusAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
 	s.spanDetails.Username = GetSpanAttributeValue[string](GRPCUsernameAttrId, s.spanDetailsMap, s.executorAttrStore, s.functionFactory, s.attrStoreKey)
 }
