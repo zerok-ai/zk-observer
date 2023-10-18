@@ -2,7 +2,7 @@ package utils
 
 // Ref: https://docs.google.com/spreadsheets/d/1E_MoV1mRL96hdTv2Q0o3pIAQ1hRF3-RQyF56kLagF04/edit#gid=1422911777
 const (
-	GRPCIdentifierAttrId AttributeID = "grpc_identifier"
+	GRPCIdentifierAttrId AttributeID = "rpc_identifier"
 
 	GRPCSystemAttrId   AttributeID = "rpc_system"
 	GRPCMethodAttrId   AttributeID = "rpc_method"
