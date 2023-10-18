@@ -6,12 +6,12 @@ const (
 
 	GRPCSystemAttrId   AttributeID = "rpc_system"
 	GRPCMethodAttrId   AttributeID = "rpc_method"
-	GRPCRouteAttrId    AttributeID = "rpc_method"
-	GRPCSchemeAttrId   AttributeID = "message_type"
-	GRPCPathAttrId     AttributeID = "message_id"
-	GRPCQueryAttrId    AttributeID = "message_uncompressed_size"
+	GRPCRouteAttrId    AttributeID = "rpc_service"
+	GRPCSchemeAttrId   AttributeID = "rpc_system"
+	GRPCPathAttrId     AttributeID = ""
+	GRPCQueryAttrId    AttributeID = ""
 	GRPCStatusAttrId   AttributeID = "rpc_grpc_status_code"
-	GRPCUsernameAttrId AttributeID = "rpc_service"
+	GRPCUsernameAttrId AttributeID = ""
 )
 
 func (s SpanProtocolUtil) AddGRPCSpanProperties() {
