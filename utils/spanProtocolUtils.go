@@ -13,6 +13,7 @@ type AttributeID string
 var DetectSpanProtocolMap = map[AttributeID]model.ProtocolType{
 	HTTPMethodAttrId: model.ProtocolTypeHTTP,
 	DBSystemAttrId:   model.ProtocolTypeDB,
+	GRPCSystemAttrId: model.ProtocolTypeGRPC,
 }
 
 type SpanProtocolUtil struct {
@@ -47,5 +48,10 @@ func (s SpanProtocolUtil) DetectSpanProtocol() model.ProtocolType {
 func (s SpanProtocolUtil) AddSpanProtocolProperties() {
 	if s.spanDetails.Protocol == model.ProtocolTypeHTTP {
 		s.AddHTTPSpanProperties()
+	} else if s.spanDetails.Protocol == model.ProtocolTypeGRPC {
+		s.AddGRPCSpanProperties()
+	} else if s.spanDetails.Protocol == model.ProtocolTypeDB {
+		/* TODO: Implement following method with DB attributes. */
+		// s.AddDBSpanProperties()
 	}
 }
