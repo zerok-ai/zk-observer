@@ -157,6 +157,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
+				if traceId == "" || spanId == "" {
+					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
+					continue
+				}
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
 				spanDetails := th.createSpanDetails(span, resourceAttrMap)
