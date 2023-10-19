@@ -8,7 +8,7 @@ const (
 	GRPCMethodAttrId   AttributeID = "rpc_method"
 	GRPCRouteAttrId    AttributeID = "rpc_service"
 	GRPCSchemeAttrId   AttributeID = "rpc_system"
-	GRPCPathAttrId     AttributeID = ""
+	GRPCPathAttrId     AttributeID = "rpc_service"
 	GRPCQueryAttrId    AttributeID = ""
 	GRPCStatusAttrId   AttributeID = "rpc_grpc_status_code"
 	GRPCUsernameAttrId AttributeID = ""
