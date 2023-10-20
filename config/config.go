@@ -56,7 +56,5 @@ func CreateConfig(configPath string) *OtlpConfig {
 		logger.Error(LOG_TAG, err)
 		os.Exit(2)
 	}
-	logC := logsConfig.LogsConfig{Level: "DEBUG", Color: true}
-	cfg.Logs = logC
 	return &cfg
 }
