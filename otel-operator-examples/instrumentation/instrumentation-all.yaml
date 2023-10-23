@@ -1,0 +1,72 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: demo-instrumentation-golang
+  annotations:
+    instrumentation.opentelemetry.io/default-auto-instrumentation-apache-httpd-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:1.0.3
+    instrumentation.opentelemetry.io/default-auto-instrumentation-dotnet-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.0.2
+    instrumentation.opentelemetry.io/default-auto-instrumentation-go-image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.3.0-alpha
+    instrumentation.opentelemetry.io/default-auto-instrumentation-java-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.30.0
+    instrumentation.opentelemetry.io/default-auto-instrumentation-nginx-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:1.0.3
+    instrumentation.opentelemetry.io/default-auto-instrumentation-nodejs-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:0.41.1
+    instrumentation.opentelemetry.io/default-auto-instrumentation-python-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.41b0
+spec:
+  exporter:
+    endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+  go:
+    env:
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: none
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_LOG_LEVEL
+        value: DEBUG
+    image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.3.0-alpha
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 32Mi
+      requests:
+        cpu: 50m
+        memory: 32Mi
+  java:
+    env:
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: none
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_LOG_LEVEL
+        value: DEBUG
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.30.0
+    resources:
+      limits:
+        cpu: 500m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  nodejs:
+    env:
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: none
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_LOG_LEVEL
+        value: DEBUG
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:0.41.1
+    resourceRequirements:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
