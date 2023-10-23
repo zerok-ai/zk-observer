@@ -34,7 +34,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: zk-otlp-receiver
 #        command: ["/bin/sh"]
-#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec app-start.sh -- --amd64 zk-otlp-receiver-amd64 --arm64 zk-otlp-receiver-arm64 -c /zk/config/config.yaml"]
+#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver-arm64 -- -c /zk/config/config.yaml"]
         ports:
         - containerPort: 8147
         resources: {}
