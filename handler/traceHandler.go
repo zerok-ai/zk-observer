@@ -107,6 +107,12 @@ func (th *TraceHandler) PushDataToRedis() error {
 	var keysToDelete []string
 	var err error
 
+	err = th.traceRedisHandler.CheckRedisConnection()
+	if err != nil {
+		logger.Error(traceLogTag, "Error while checking redis conn ", err)
+		return err
+	}
+
 	th.traceStore.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
 		spanDetails := value.(model.OTelSpanDetails)

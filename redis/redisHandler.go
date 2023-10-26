@@ -143,7 +143,7 @@ func (h *RedisHandler) CheckRedisConnection() error {
 	err := h.PingRedis()
 	if err != nil {
 		//Closing redis connection.
-		err := h.CloseConnection()
+		err = h.CloseConnection()
 		if err != nil {
 			logger.Error(redisHandlerLogTag, "Failed to close Redis connection: ", err)
 			return err

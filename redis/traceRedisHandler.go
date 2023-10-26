@@ -34,13 +34,12 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 	return handler, nil
 }
 
+func (h *TraceRedisHandler) CheckRedisConnection() error {
+	return h.redisHandler.CheckRedisConnection()
+}
+
 func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails model.OTelSpanDetails) error {
 
-	err := h.redisHandler.CheckRedisConnection()
-	if err != nil {
-		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
-		return err
-	}
 	spanJsonMap := make(map[string]string)
 	spanJSON, err := json.Marshal(spanDetails)
 	if err != nil {
