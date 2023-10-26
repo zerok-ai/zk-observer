@@ -141,6 +141,7 @@ func (th *TraceHandler) PushDataToRedis() error {
 
 func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
 	if len(resourceSpans) == 0 {
+		logger.Info(traceLogTag, "No resources found in the call")
 		return
 	}
 	for _, resourceSpan := range resourceSpans {
@@ -154,6 +155,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
+			logger.InfoF(traceLogTag, "About to process %v spans", len(scopeSpans.Spans))
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
