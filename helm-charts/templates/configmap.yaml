@@ -8,7 +8,7 @@ data:
   config.yaml: |-
     port: 8147
     setHttpEndPoint: true
-    setSpanAttributes: true
+    setSpanAttributes: false
     logs:
       color: {{ .Values.serviceConfigs.logs.color }}
       level: {{ .Values.serviceConfigs.logs.level }}
