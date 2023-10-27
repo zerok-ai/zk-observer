@@ -21,7 +21,7 @@ type OTelSpanDetails struct {
 	Errors        []SpanErrorInfo `json:"errors,omitempty"`
 
 	// Span Attributes
-	SpanAttributes     *GenericMap `json:"span_attributes,omitempty"`
+	SpanAttributes     *GenericMap `json:"attributes,omitempty"`
 	ResourceAttributes *GenericMap `json:"resource_attributes,omitempty"`
 	ScopeAttributes    *GenericMap `json:"scope_attributes,omitempty"`
 
