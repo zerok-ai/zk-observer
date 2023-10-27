@@ -4,7 +4,7 @@ metadata:
   name: demo-instrumentation-java
 spec:
   exporter:
-    endpoint: http://opentelemetry-collector.default.svc.cluster.local:4317
+    endpoint: http://opentelemetry-collector.monitoring.svc.cluster.local:4317
   propagators:
     - tracecontext
     - baggage
