@@ -79,7 +79,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 	var groupByMap model.GroupByMap
 	for _, scenario := range scenarios {
 		if scenario == nil {
-			logger.Debug(spanFilteringLogTag, "No scenario found")
+			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
 		processedWorkloadIds := h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
@@ -179,8 +179,8 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 }
 
 func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
-	err := h.redisHandler.CheckRedisConnection()
-	if err != nil {
+
+	if err := h.redisHandler.CheckRedisConnection(); err != nil {
 		logger.Error(spanFilteringLogTag, "Error while checking redis conn ", err)
 		return err
 	}

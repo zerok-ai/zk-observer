@@ -107,6 +107,12 @@ func (th *TraceHandler) PushDataToRedis() error {
 	var keysToDelete []string
 	var err error
 
+	err = th.traceRedisHandler.CheckRedisConnection()
+	if err != nil {
+		logger.Error(traceLogTag, "Error while checking redis conn ", err)
+		return err
+	}
+
 	th.traceStore.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
 		spanDetails := value.(model.OTelSpanDetails)
@@ -140,7 +146,9 @@ func (th *TraceHandler) PushDataToRedis() error {
 }
 
 func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
+	var processedSpanCount = 0
 	if len(resourceSpans) == 0 {
+		logger.Info(traceLogTag, "No resources found in the call")
 		return
 	}
 	for _, resourceSpan := range resourceSpans {
@@ -159,6 +167,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
 			}
 			for _, span := range scopeSpans.Spans {
+				processedSpanCount++
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
@@ -203,6 +212,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			}
 		}
 	}
+	defer logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
 }
 
 // Populate Span common properties.

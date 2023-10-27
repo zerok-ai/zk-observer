@@ -11,7 +11,6 @@ import (
 )
 
 var resourceLogTag = "ResourceRedisHandler"
-var skipResourceDataError = fmt.Errorf("skipping saving resource data")
 
 type ResourceRedisHandler struct {
 	redisHandler         *RedisHandler
@@ -59,7 +58,8 @@ func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpan
 	if !ok {
 		filteredResourceData := make(map[string]string)
 		telemetryData := model.CreateTelemetryDetails(attrMap)
-		telemetryDataJSON, err := json.Marshal(telemetryData)
+		var telemetryDataJSON []byte
+		telemetryDataJSON, err = json.Marshal(telemetryData)
 		if err != nil {
 			logger.Debug(resourceLogTag, "Error encoding telemetryData for service %s: %v\n", telemetryData.ServiceName, err)
 			return err
