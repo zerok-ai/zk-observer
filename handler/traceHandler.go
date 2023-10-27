@@ -123,7 +123,7 @@ func (th *TraceHandler) PushDataToRedis() error {
 			spanIDStr := ids[1]
 			err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanDetails)
 			if err != nil {
-				logger.Debug(traceLogTag, "Error whole putting trace data to redis ", err)
+				logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
 				// Returning false to stop the iteration
 				return false
 			}
