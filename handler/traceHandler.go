@@ -183,9 +183,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				/* Populate attributes */
 				if th.otlpConfig.SetSpanAttributes {
-					spanDetails.SpanAttributes = spanAttrMap
-					spanDetails.ResourceAttributes = resourceAttrMap
-					spanDetails.ScopeAttributes = scopeAttrMap
+					spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
+					spanDetails.ScopeAttributes = model.GenericMapPtrFromMap(scopeAttrMap)
+					spanDetails.ResourceAttributes = model.GenericMapPtrFromMap(resourceAttrMap)
 				}
 
 				/* Detect Span protocol */

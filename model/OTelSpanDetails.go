@@ -4,6 +4,13 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 )
 
+type GenericMap map[string]interface{}
+
+func GenericMapPtrFromMap(inputMap map[string]interface{}) *GenericMap {
+	genericMap := GenericMap(inputMap)
+	return &genericMap
+}
+
 type OTelSpanDetails struct {
 	// Span common Properties
 	TraceId       string          `json:"trace_id"`
@@ -16,9 +23,9 @@ type OTelSpanDetails struct {
 	Errors        []SpanErrorInfo `json:"errors,omitempty"`
 
 	// Span Attributes
-	SpanAttributes     map[string]interface{} `json:"span_attributes"`
-	ResourceAttributes map[string]interface{} `json:"resource_attributes"`
-	ScopeAttributes    map[string]interface{} `json:"scope_attributes"`
+	SpanAttributes     *GenericMap `json:"span_attributes,omitempty"`
+	ResourceAttributes *GenericMap `json:"resource_attributes,omitempty"`
+	ScopeAttributes    *GenericMap `json:"scope_attributes,omitempty"`
 
 	// Span Identifier Properties
 	ServiceName string `json:"service_name"`
