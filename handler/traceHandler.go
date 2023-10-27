@@ -154,6 +154,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
+			scopeAttrMap := map[string]interface{}{}
+			if scopeSpans.Scope != nil {
+				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
+			}
 			for _, span := range scopeSpans.Spans {
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
@@ -164,7 +168,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
 					continue
 				}
-
+				spanDetails.ResourceAttributes = resourceAttrMap
+				spanDetails.ScopeAttributes = scopeAttrMap
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
 
@@ -210,10 +215,18 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	spanDetail.StartNs = span.StartTimeUnixNano
 	spanDetail.LatencyNs = span.EndTimeUnixNano - span.StartTimeUnixNano
 
-	attrMap := utils.ConvertKVListToMap(span.Attributes)
+	spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
 	if th.otlpConfig.SetSpanAttributes {
-		spanDetail.Attributes = attrMap
+		spanDetail.SpanAttributes = spanAttrMap
 	}
+
+	if serviceName, getSvcNameOk := resourceAttrMap[common.OTelResourceServiceName]; getSvcNameOk {
+		if serviceNameStr, typeConvOk := serviceName.(string); typeConvOk {
+			spanDetail.ServiceName = &serviceNameStr
+		}
+	}
+	var operationName = span.Name
+	spanDetail.OperationName = &operationName
 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
@@ -224,7 +237,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 		}
 	}
 
-	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, attrMap, resourceAttrMap)
+	sourceIp, destIp := utils.GetSourceDestIPPair(spanDetail.SpanKind, spanAttrMap, resourceAttrMap)
 	podDetailsStore := th.factory.GetPodDetailsStore()
 	if len(sourceIp) > 0 {
 		spanDetail.SourceIp = &sourceIp

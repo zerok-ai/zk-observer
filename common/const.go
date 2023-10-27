@@ -16,5 +16,7 @@ const (
 
 	ResourceLanguageKey = "telemetry.sdk.language"
 
+	OTelResourceServiceName = "service.name"
+
 	DefaultSchemaVersion = "1.7.0"
 )
