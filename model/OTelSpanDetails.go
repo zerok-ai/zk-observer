@@ -13,8 +13,6 @@ func GenericMapPtrFromMap(inputMap map[string]interface{}) *GenericMap {
 
 type OTelSpanDetails struct {
 	// Span common Properties
-	TraceId       string          `json:"trace_id"`
-	SpanId        string          `json:"span_id"`
 	ParentSpanId  string          `json:"parent_span_id"`
 	SpanKind      SpanKind        `json:"span_kind"`
 	StartNs       uint64          `json:"start_ns"`

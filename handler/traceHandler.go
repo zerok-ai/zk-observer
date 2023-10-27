@@ -171,13 +171,13 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
-
-				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
-				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
-				if spanDetails.TraceId == "" || spanDetails.SpanId == "" {
+				if traceId == "" || spanId == "" {
 					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
 					continue
 				}
+
+				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
+				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
 
@@ -203,7 +203,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(spanDetails, spanDetailsMap)
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetails, spanDetailsMap)
 				spanDetails.WorkloadIdList = workloadIds
 				spanDetails.GroupBy = groupBy
 
@@ -224,8 +224,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 // Populate Span common properties.
 func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) model.OTelSpanDetails {
 	spanDetail := model.OTelSpanDetails{}
-	spanDetail.TraceId = hex.EncodeToString(span.TraceId)
-	spanDetail.SpanId = hex.EncodeToString(span.SpanId)
+	//spanDetail.TraceId = hex.EncodeToString(span.TraceId)
+	//spanDetail.SpanId = hex.EncodeToString(span.SpanId)
 	spanDetail.SetParentSpanId(hex.EncodeToString(span.ParentSpanId))
 	spanDetail.SpanKind = utils.GetSpanKind(span.Kind)
 	spanDetail.StartNs = span.StartTimeUnixNano

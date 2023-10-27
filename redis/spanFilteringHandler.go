@@ -68,7 +68,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -82,7 +82,7 @@ func (h *SpanFilteringHandler) FilterSpans(spanDetails model.OTelSpanDetails, sp
 			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		processedWorkloadIds := h.processScenarioWorkloads(scenario, spanDetails, spanDetailsMap)
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap)
 		if len(processedWorkloadIds) > 0 {
 			if satisfiedWorkLoadIds == nil {
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
@@ -144,7 +144,7 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
-func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) WorkloadIdList {
+func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
 	workloads := scenario.Workloads
@@ -171,7 +171,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
-			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: spanDetails.TraceId})
+			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, id)
 		}
 	}
