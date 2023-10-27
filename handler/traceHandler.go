@@ -179,7 +179,6 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
 				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
 				spanDetails.SchemaVersion = schemaVersion
-				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
 
 				/* Populate attributes */
 				if th.otlpConfig.SetSpanAttributes {
@@ -187,6 +186,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					spanDetails.ScopeAttributes = model.GenericMapPtrFromMap(scopeAttrMap)
 					spanDetails.ResourceAttributes = model.GenericMapPtrFromMap(resourceAttrMap)
 				}
+
+				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
 
 				/* Detect Span protocol */
 				executorAttrStore := th.factory.GetExecutorAttrStore()
