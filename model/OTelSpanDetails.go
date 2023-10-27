@@ -6,21 +6,23 @@ import (
 
 type OTelSpanDetails struct {
 	// Span common Properties
-	TraceId            string                 `json:"trace_id"`
-	SpanId             string                 `json:"span_id"`
-	ParentSpanId       string                 `json:"parent_span_id"`
-	SpanKind           SpanKind               `json:"span_kind"`
-	StartNs            uint64                 `json:"start_ns"`
-	LatencyNs          uint64                 `json:"latency_ns"`
-	SchemaVersion      string                 `json:"schema_version"`
-	SpanAttributes     map[string]interface{} `json:"attributes"`
+	TraceId       string          `json:"trace_id"`
+	SpanId        string          `json:"span_id"`
+	ParentSpanId  string          `json:"parent_span_id"`
+	SpanKind      SpanKind        `json:"span_kind"`
+	StartNs       uint64          `json:"start_ns"`
+	LatencyNs     uint64          `json:"latency_ns"`
+	SchemaVersion string          `json:"schema_version"`
+	Errors        []SpanErrorInfo `json:"errors,omitempty"`
+
+	// Span Attributes
+	SpanAttributes     map[string]interface{} `json:"span_attributes"`
 	ResourceAttributes map[string]interface{} `json:"resource_attributes"`
 	ScopeAttributes    map[string]interface{} `json:"scope_attributes"`
-	Errors             []SpanErrorInfo        `json:"errors,omitempty"`
 
 	// Span Identifier Properties
-	ServiceName   *string `json:"service_name,omitempty"`
-	OperationName *string `json:"operation_name,omitempty"`
+	ServiceName string `json:"service_name"`
+	SpanName    string `json:"span_name"`
 
 	Protocol ProtocolType `json:"protocol"`
 

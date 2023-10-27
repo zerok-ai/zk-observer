@@ -172,15 +172,21 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanId := hex.EncodeToString(span.SpanId)
 				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 
-				spanDetails := th.createSpanDetails(span, resourceAttrMap)
+				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
+				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
 				if spanDetails.TraceId == "" || spanDetails.SpanId == "" {
 					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
 					continue
 				}
-				spanDetails.ResourceAttributes = resourceAttrMap
-				spanDetails.ScopeAttributes = scopeAttrMap
 				spanDetails.SchemaVersion = schemaVersion
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
+
+				/* Populate attributes */
+				if th.otlpConfig.SetSpanAttributes {
+					spanDetails.SpanAttributes = spanAttrMap
+					spanDetails.ResourceAttributes = resourceAttrMap
+					spanDetails.ScopeAttributes = scopeAttrMap
+				}
 
 				/* Detect Span protocol */
 				executorAttrStore := th.factory.GetExecutorAttrStore()
@@ -216,7 +222,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 }
 
 // Populate Span common properties.
-func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}) model.OTelSpanDetails {
+func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) model.OTelSpanDetails {
 	spanDetail := model.OTelSpanDetails{}
 	spanDetail.TraceId = hex.EncodeToString(span.TraceId)
 	spanDetail.SpanId = hex.EncodeToString(span.SpanId)
@@ -224,19 +230,13 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 	spanDetail.SpanKind = utils.GetSpanKind(span.Kind)
 	spanDetail.StartNs = span.StartTimeUnixNano
 	spanDetail.LatencyNs = span.EndTimeUnixNano - span.StartTimeUnixNano
-
-	spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
-	if th.otlpConfig.SetSpanAttributes {
-		spanDetail.SpanAttributes = spanAttrMap
-	}
+	spanDetail.SpanName = span.Name
 
 	if serviceName, getSvcNameOk := resourceAttrMap[common.OTelResourceServiceName]; getSvcNameOk {
 		if serviceNameStr, typeConvOk := serviceName.(string); typeConvOk {
-			spanDetail.ServiceName = &serviceNameStr
+			spanDetail.ServiceName = serviceNameStr
 		}
 	}
-	var operationName = span.Name
-	spanDetail.OperationName = &operationName
 
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
