@@ -144,6 +144,39 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
+func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) bool {
+	if workload.Executor != zkmodel.ExecutorOTel {
+		logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
+		return false
+	}
+	scenarioWorkloadNs, scenarioWorkloadDeplName, err := workload.GetNamespaceAndWorkloadName()
+	if err != nil {
+		logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload service: ", workload.Service, " error: ", err)
+		return false
+	}
+
+	k8sNamespace, nsOk := spanAttrMap[common.OTelResourceAttrNamespaceKey]
+	k8sDeployment, deplOk := spanAttrMap[common.OTelResourceAttrDeploymentNameKey]
+	if !nsOk || !deplOk {
+		logger.Debug(spanFilteringLogTag, "K8s namespace or deployment name is not present in span attributes")
+		return false
+	}
+
+	if scenarioWorkloadNs != common.ScenarioWorkloadGenericNamespaceKey && k8sNamespace != scenarioWorkloadNs {
+		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sNamespace, "scenarioWorkload: ", scenarioWorkloadNs)
+		logger.Info(spanFilteringLogTag, "Workload namespaces are not matching")
+		return false
+	}
+
+	if scenarioWorkloadDeplName != common.ScenarioWorkloadGenericDeploymentKey && k8sDeployment != scenarioWorkloadDeplName {
+		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sDeployment, "scenarioWorkload: ", scenarioWorkloadDeplName)
+		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
+		return false
+	}
+
+	return true
+}
+
 func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
@@ -154,20 +187,9 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 	}
 	logger.Debug(spanFilteringLogTag, "Workloads found for scenario: ", scenario.Title, " workloads: ", workloads)
 	for id, workload := range *workloads {
-		if workload.Executor != zkmodel.ExecutorOTel {
-			logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
-			continue
-		}
-		namespace, workloadName, err := workload.GetNamespaceAndWorkloadName()
-		if err != nil {
-			logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload id: ", id, " error: ", err)
-			continue
-		}
-
-		if resourceAttrMap[common.OTelResourceAttrNamespaceKey] != namespace || resourceAttrMap[common.OTelResourceAttrDeploymentNameKey] != workloadName {
-			logger.Debug(spanFilteringLogTag, "resourceAttrMap: namespace: ", resourceAttrMap[common.OTelResourceAttrNamespaceKey], " deployment: ", resourceAttrMap[common.OTelResourceAttrDeploymentNameKey])
-			logger.Debug(spanFilteringLogTag, "workload details: namespace: ", namespace, " deployment: ", workloadName)
-			logger.Info(spanFilteringLogTag, "Workload namespace or name is not matching")
+		// Check if span is to be evaluated for this workload
+		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap, resourceAttrMap, spanAttrMap) {
+			logger.Debug(spanFilteringLogTag, "Span not to be evaluated for workload: ", id)
 			continue
 		}
 
