@@ -68,7 +68,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -82,7 +82,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTe
 			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap)
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
 		if len(processedWorkloadIds) > 0 {
 			if satisfiedWorkLoadIds == nil {
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
@@ -144,7 +144,7 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
-func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}) WorkloadIdList {
+func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
 	workloads := scenario.Workloads
@@ -158,8 +158,20 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 			logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 			continue
 		}
-		rule := workload.Rule
+		namespace, workloadName, err := workload.GetNamespaceAndWorkloadName()
+		if err != nil {
+			logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload id: ", id, " error: ", err)
+			continue
+		}
 
+		if resourceAttrMap[common.OTelResourceAttrNamespaceKey] != namespace || resourceAttrMap[common.OTelResourceAttrDeploymentNameKey] != workloadName {
+			logger.Debug(spanFilteringLogTag, "resourceAttrMap: namespace: ", resourceAttrMap[common.OTelResourceAttrNamespaceKey], " deployment: ", resourceAttrMap[common.OTelResourceAttrDeploymentNameKey])
+			logger.Debug(spanFilteringLogTag, "workload details: namespace: ", namespace, " deployment: ", workloadName)
+			logger.Info(spanFilteringLogTag, "Workload namespace or name is not matching")
+			continue
+		}
+
+		rule := workload.Rule
 		logger.Debug(spanFilteringLogTag, "Evaluating rule for scenario: ", scenario.Title, " workload id: ", id)
 		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, workload.Protocol)
 		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, spanDetailsMap)

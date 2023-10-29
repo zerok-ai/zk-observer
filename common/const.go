@@ -18,5 +18,8 @@ const (
 
 	OTelResourceServiceName = "service.name"
 
+	OTelResourceAttrNamespaceKey      = "k8s.namespace.name"
+	OTelResourceAttrDeploymentNameKey = "k8s.deployment.name"
+
 	DefaultSchemaVersion = "1.7.0"
 )

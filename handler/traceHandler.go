@@ -204,7 +204,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetails, spanDetailsMap)
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetails, spanDetailsMap, resourceAttrMap, spanAttrMap)
 				spanDetails.WorkloadIdList = workloadIds
 				spanDetails.GroupBy = groupBy
 
