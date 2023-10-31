@@ -40,8 +40,7 @@ func (h *TraceRedisHandler) CheckRedisConnection() error {
 
 func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails model.OTelSpanDetails) error {
 
-	err := h.redisHandler.CheckRedisConnection()
-	if err != nil {
+	if err := h.redisHandler.CheckRedisConnection(); err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
 		return err
 	}

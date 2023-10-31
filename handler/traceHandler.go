@@ -94,44 +94,15 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 
 	resourceSpans := traceData.ResourceSpans
 	th.ProcessTraceData(resourceSpans)
-	err = th.PushDataToRedis()
-	if err != nil {
-		logger.Error(traceLogTag, "Error while pushing data to redis ", err)
-		return
-	}
+	th.PushDataToRedis()
 
 	// Respond to the client
 	ctx.StatusCode(iris.StatusOK)
 }
 
-func (th *TraceHandler) PushDataToRedis() error {
-	var keysToDelete []string
-	var err error
-
-	err = th.traceRedisHandler.CheckRedisConnection()
-	if err != nil {
-		logger.Error(traceLogTag, "Error while checking redis conn ", err)
-		return err
-	}
-
-	th.traceStore.Range(func(key, value interface{}) bool {
-		keyStr := key.(string)
-		spanDetails := value.(model.OTelSpanDetails)
-		//Split keyStr using delimiter.
-		ids := strings.Split(keyStr, delimiter)
-		if len(ids) == 2 {
-			traceIDStr := ids[0]
-			spanIDStr := ids[1]
-			err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanDetails)
-			if err != nil {
-				logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
-				// Returning false to stop the iteration
-				return false
-			}
-		}
-		keysToDelete = append(keysToDelete, keyStr)
-		return true
-	})
+func (th *TraceHandler) PushDataToRedis() {
+	// Iterate over the sync.Map and push the data to redis
+	keysToDelete := th.pushSpansToRedisPipeline()
 
 	// Delete the keys from the sync.Map after the iteration
 	th.deleteFromTraceStore(keysToDelete)
@@ -140,8 +111,6 @@ func (th *TraceHandler) PushDataToRedis() error {
 	th.exceptionHandler.SyncPipeline()
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
-
-	return err
 }
 
 func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
@@ -294,4 +263,32 @@ func (th *TraceHandler) addToTraceStore(key string, spanDetails model.OTelSpanDe
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
 	th.traceStore.Store(key, spanDetails)
+}
+
+func (th *TraceHandler) pushSpansToRedisPipeline() []string {
+	th.traceStoreMutex.Lock()
+	defer th.traceStoreMutex.Unlock()
+
+	var keysToDelete []string
+
+	// Iterate over the sync.Map and push the data to redis
+	th.traceStore.Range(func(key, value interface{}) bool {
+		keyStr := key.(string)
+		spanDetails := value.(model.OTelSpanDetails)
+		//Split keyStr using delimiter.
+		ids := strings.Split(keyStr, delimiter)
+		if len(ids) == 2 {
+			traceIDStr := ids[0]
+			spanIDStr := ids[1]
+			err := th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanDetails)
+			if err != nil {
+				logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
+				// Returning false to stop the iteration
+				return false
+			}
+		}
+		keysToDelete = append(keysToDelete, keyStr)
+		return true
+	})
+	return keysToDelete
 }
