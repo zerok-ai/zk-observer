@@ -165,13 +165,13 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		k8sDeployment = common.ScenarioWorkloadGenericDeploymentKey
 	}
 
-	if k8sNamespace != scenarioWorkloadNs {
+	if scenarioWorkloadNs != common.ScenarioWorkloadGenericNamespaceKey && k8sNamespace != scenarioWorkloadNs {
 		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sNamespace, "scenarioWorkload: ", scenarioWorkloadNs)
 		logger.Info(spanFilteringLogTag, "Workload namespaces are not matching")
 		return false
 	}
 
-	if k8sDeployment != scenarioWorkloadDeplName {
+	if scenarioWorkloadDeplName != common.ScenarioWorkloadGenericDeploymentKey && k8sDeployment != scenarioWorkloadDeplName {
 		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sDeployment, "scenarioWorkload: ", scenarioWorkloadDeplName)
 		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
 		return false
