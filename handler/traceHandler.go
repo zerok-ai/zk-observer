@@ -26,6 +26,7 @@ var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
 
 type TraceHandler struct {
 	traceStore             sync.Map
+	traceStoreMutex        sync.Mutex
 	traceRedisHandler      *redis.TraceRedisHandler
 	exceptionHandler       *redis.ExceptionRedisHandler
 	resourceDetailsHandler *redis.ResourceRedisHandler
@@ -133,9 +134,7 @@ func (th *TraceHandler) PushDataToRedis() error {
 	})
 
 	// Delete the keys from the sync.Map after the iteration
-	for _, key := range keysToDelete {
-		th.traceStore.Delete(key)
-	}
+	th.deleteFromTraceStore(keysToDelete)
 
 	th.traceRedisHandler.SyncPipeline()
 	th.exceptionHandler.SyncPipeline()
@@ -210,7 +209,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
-				th.traceStore.Store(key, spanDetails)
+				th.addToTraceStore(key, spanDetails)
 
 				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
 				if err != nil {
@@ -281,4 +280,18 @@ func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev
 	spanExceptionDetails.ExceptionType = exceptionDetails.Type
 	spanExceptionDetails.Message = exceptionDetails.Message
 	return spanExceptionDetails
+}
+
+func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
+	th.traceStoreMutex.Lock()
+	defer th.traceStoreMutex.Unlock()
+	for _, key := range keysToDelete {
+		th.traceStore.Delete(key)
+	}
+}
+
+func (th *TraceHandler) addToTraceStore(key string, spanDetails model.OTelSpanDetails) {
+	th.traceStoreMutex.Lock()
+	defer th.traceStoreMutex.Unlock()
+	th.traceStore.Store(key, spanDetails)
 }
