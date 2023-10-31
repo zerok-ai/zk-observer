@@ -155,20 +155,23 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		return false
 	}
 
-	k8sNamespace, nsOk := spanAttrMap[common.OTelResourceAttrNamespaceKey]
-	k8sDeployment, deplOk := spanAttrMap[common.OTelResourceAttrDeploymentNameKey]
-	if !nsOk || !deplOk {
-		logger.Debug(spanFilteringLogTag, "K8s namespace or deployment name is not present in span attributes")
-		return false
+	//var k8sNamespace, k8sDeployment string
+	k8sNamespace, nsOk := resourceAttrMap[common.OTelResourceAttrNamespaceKey]
+	if !nsOk || k8sNamespace == "" {
+		k8sNamespace = common.ScenarioWorkloadGenericNamespaceKey
+	}
+	k8sDeployment, deplOk := resourceAttrMap[common.OTelResourceAttrDeploymentNameKey]
+	if !deplOk || k8sDeployment == "" {
+		k8sDeployment = common.ScenarioWorkloadGenericDeploymentKey
 	}
 
-	if scenarioWorkloadNs != common.ScenarioWorkloadGenericNamespaceKey && k8sNamespace != scenarioWorkloadNs {
+	if k8sNamespace != scenarioWorkloadNs {
 		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sNamespace, "scenarioWorkload: ", scenarioWorkloadNs)
 		logger.Info(spanFilteringLogTag, "Workload namespaces are not matching")
 		return false
 	}
 
-	if scenarioWorkloadDeplName != common.ScenarioWorkloadGenericDeploymentKey && k8sDeployment != scenarioWorkloadDeplName {
+	if k8sDeployment != scenarioWorkloadDeplName {
 		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sDeployment, "scenarioWorkload: ", scenarioWorkloadDeplName)
 		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
 		return false
