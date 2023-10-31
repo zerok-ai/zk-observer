@@ -158,10 +158,14 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 	//var k8sNamespace, k8sDeployment string
 	k8sNamespace, nsOk := resourceAttrMap[common.OTelResourceAttrNamespaceKey]
 	if !nsOk || k8sNamespace == "" {
+		logger.Warn(spanFilteringLogTag, "Namespace not found in resourceAttrMap, using namespace='*'. "+
+			"Please set k8s.namespace.name value in OTEL_RESOURCE_ATTRIBUTES env variable.")
 		k8sNamespace = common.ScenarioWorkloadGenericNamespaceKey
 	}
 	k8sDeployment, deplOk := resourceAttrMap[common.OTelResourceAttrDeploymentNameKey]
 	if !deplOk || k8sDeployment == "" {
+		logger.Warn(spanFilteringLogTag, "Deployment not found in resourceAttrMap, using deploymentName='*'. "+
+			"Please set k8s.deployment.name value in OTEL_RESOURCE_ATTRIBUTES env variable.")
 		k8sDeployment = common.ScenarioWorkloadGenericDeploymentKey
 	}
 
