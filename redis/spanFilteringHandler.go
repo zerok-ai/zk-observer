@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -12,6 +11,7 @@ import (
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
@@ -43,12 +43,12 @@ type WorkloadIdList []string
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
-	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
+	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, clientDBNames.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
-	redisHandler, err := NewRedisHandler(&cfg.Redis, common.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
+	redisHandler, err := NewRedisHandler(&cfg.Redis, clientDBNames.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err
