@@ -270,7 +270,9 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
 		return "", err
 	}
+
 	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration * 60)
+	logger.InfoF(spanFilteringLogTag, "suffix calculation: minutes=%d, bucketActiveDuration=%d suffix=%d", minutes, h.Cfg.Workloads.BucketActiveDuration, suffix)
 
 	return fmt.Sprintf("%v", suffix), nil
 }
