@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -256,6 +257,8 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 	return nil
 }
 
+var BucketDurationInMinutes = 1 //in minutes
+
 func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 
 	currentTime := time.Now()
@@ -269,7 +272,8 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
 		return "", err
 	}
-	suffix := minutes / 5
+	suffix := minutes / BucketDurationInMinutes
+
 	return fmt.Sprintf("%v", suffix), nil
 }
 
