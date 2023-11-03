@@ -25,9 +25,10 @@ type TraceConfig struct {
 }
 
 type WorkloadConfig struct {
-	SyncDuration int `yaml:"syncDuration"`
-	BatchSize    int `yaml:"batchSize"`
-	Ttl          int `yaml:"ttl"`
+	SyncDuration         int `yaml:"syncDuration"`
+	BatchSize            int `yaml:"batchSize"`
+	BucketActiveDuration int `yaml:"bucketActiveDuration"`
+	Ttl                  int `yaml:"ttl"`
 }
 
 type ScenarioConfig struct {

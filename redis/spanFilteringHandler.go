@@ -257,8 +257,6 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 	return nil
 }
 
-var BucketDurationInMinutes = 1 //in minutes
-
 func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 
 	currentTime := time.Now()
@@ -272,7 +270,7 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
 		return "", err
 	}
-	suffix := minutes / BucketDurationInMinutes
+	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration * 60)
 
 	return fmt.Sprintf("%v", suffix), nil
 }

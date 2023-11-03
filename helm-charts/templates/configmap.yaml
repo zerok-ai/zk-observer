@@ -29,7 +29,8 @@ data:
     workloads:
       syncDuration: 30
       batchSize: 30
-      ttl: 1800
+      bucketActiveDuration: 60
+      ttl: 300
     scenario:
       syncDuration: 30
     exception:
