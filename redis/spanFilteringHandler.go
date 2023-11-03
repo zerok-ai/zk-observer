@@ -259,7 +259,7 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 
 func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	timeFormatted := currentTime.Format("15:04")
 
 	timeParts := strings.Split(timeFormatted, ":")
@@ -271,7 +271,7 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 		return "", err
 	}
 
-	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration * 60)
+	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration / 60)
 	logger.InfoF(spanFilteringLogTag, "suffix calculation: timeFormatted=%v, minutesPart=%v, minutes=%d, bucketActiveDuration=%d suffix=%d", timeFormatted, minutesPart, minutes, h.Cfg.Workloads.BucketActiveDuration, suffix)
 
 	return fmt.Sprintf("%v", suffix), nil
