@@ -16,7 +16,15 @@ on:
 #        required: true
 #        default: 'poc'
 jobs:
+  init:
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-prod-init.yml@main
+    with:
+      ENVIRONMENT: ${{ github.event.inputs.ENV }}
+      GIT_TAG: ${{ github.ref }}
+      DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
+
   helm-push:
+    needs: init
     uses: zerok-ai/zk-git-actions/.github/workflows/zk-helm-publish.yml@main
     with:
       HELM_VERSION: ${{ needs.init.outputs.VERSION }}
@@ -26,6 +34,7 @@ jobs:
       HELM_BUCKET_URL: ${{ needs.init.outputs.HELM_BUCKET_URL }}
       PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
       HELM_CHARTS_DIRECTORY: "zk-opentelemetry"
+      APP_NAME_VAR: "APP_NAME_OTEL"
     secrets:
       AWS_ACCESS_ID: ${{ secrets.AWS_ACCESS_ID }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
