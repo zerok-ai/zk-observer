@@ -76,6 +76,18 @@ func (h *RedisHandler) Set(key string, value interface{}) error {
 	return statusCmd.Err()
 }
 
+func (h *RedisHandler) Get(key string) (string, error) {
+	result, err := h.RedisClient.Get(h.ctx, key).Result()
+	if err == redis.Nil {
+		// Key does not exist
+		return "", nil
+	} else if err != nil {
+		logger.Error(redisHandlerLogTag, "Failed to get key from Redis:", err)
+		return "", err
+	}
+	return result, nil
+}
+
 func (h *RedisHandler) SetNX(key string, value interface{}) error {
 	statusCmd := h.RedisClient.SetNX(h.ctx, key, value, 0)
 	return statusCmd.Err()
@@ -110,6 +122,29 @@ func (h *RedisHandler) HMSetPipeline(key string, value map[string]string, expira
 		return cmd.Err()
 	}
 	return h.setExpiry(key, expiration)
+}
+
+func (h *RedisHandler) GetKeysByPattern(pattern string) ([]string, error) {
+	keys, err := h.RedisClient.Keys(h.ctx, pattern).Result()
+	if err != nil {
+		logger.Error(redisHandlerLogTag, fmt.Sprintf("Error retrieving keys for pattern %s: ", pattern), err)
+		return nil, err
+	}
+	return keys, nil
+}
+
+func (h *RedisHandler) SetWithTTL(key string, value interface{}, ttl time.Duration) error {
+	return h.RedisClient.Set(h.ctx, key, value, ttl).Err()
+}
+
+func (h *RedisHandler) Rename(oldKey string, newKey string) error {
+	statusCmd := h.RedisClient.Rename(h.ctx, oldKey, newKey)
+	if statusCmd.Err() != nil {
+		logger.Error(redisHandlerLogTag, fmt.Sprintf("Error while renaming key from %s to %s ", oldKey, newKey), statusCmd.Err())
+		return statusCmd.Err()
+	}
+	logger.Info(redisHandlerLogTag, fmt.Sprintf("Key renamed from %s to %s", oldKey, newKey))
+	return nil
 }
 
 func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration time.Duration) error {
