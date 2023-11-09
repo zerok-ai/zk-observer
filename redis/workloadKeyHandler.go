@@ -3,8 +3,12 @@ package redis
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	"log"
+	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
+	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
+	zktick "github.com/zerok-ai/zk-utils-go/ticker"
 	"time"
 )
 
@@ -12,62 +16,62 @@ const (
 	TickerInterval = 1 * time.Minute
 )
 
+var workloadLogTag = "WorkloadKeyHandler"
+
 // WorkloadKeyHandler handles periodic tasks to manage workload keys in Redis.
 type WorkloadKeyHandler struct {
-	RedisHandler *RedisHandler
-	UUID         string
-	logTag       string
+	RedisHandler  *RedisHandler
+	UUID          string
+	logTag        string
+	scenarioStore *zkredis.VersionedStore[zkmodel.Scenario]
+	ticker        *zktick.TickerTask
 }
 
-// NewWorkloadKeyHandler initializes a new WorkloadKeyHandler with a given RedisHandler.
-func NewWorkloadKeyHandler(redisHandler *RedisHandler) *WorkloadKeyHandler {
-	// Generate a new UUID for the instance
-	uuid := uuid.New().String()
+func NewWorkloadKeyHandler(cfg *config.OtlpConfig, store *zkredis.VersionedStore[zkmodel.Scenario]) (*WorkloadKeyHandler, error) {
+	// Generate a new ID for the instance
+	uniqueId := uuid.New().String()
+
+	redisHandler, err := NewRedisHandlerWithoutTicker(&cfg.Redis, clientDBNames.FilteredTracesDBName, workloadLogTag)
+	if err != nil {
+		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
+		return nil, err
+	}
 
 	handler := &WorkloadKeyHandler{
-		RedisHandler: redisHandler,
-		UUID:         uuid,
-		logTag:       "WorkloadKeyHandler",
+		RedisHandler:  redisHandler,
+		UUID:          uniqueId,
+		logTag:        "WorkloadKeyHandler",
+		scenarioStore: store,
 	}
 
-	// Start the ticker
-	go handler.startTicker()
+	handler.ticker = zktick.GetNewTickerTask("workload_rename", TickerInterval, handler.manageWorkloadKeys)
+	handler.ticker.Start()
 
-	return handler
-}
-
-// startTicker starts a ticker that periodically invokes manageWorkloadKeys for each scenario.
-func (wh *WorkloadKeyHandler) startTicker() {
-	ticker := time.NewTicker(TickerInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			wh.manageWorkloadKeys()
-		}
-	}
+	return handler, nil
 }
 
 // manageWorkloadKeys retrieves scenarios from a store and calls ManageWorkloadKey for each one.
 func (wh *WorkloadKeyHandler) manageWorkloadKeys() {
-	// TODO: Retrieve scenarios from store and iterate over them
-	// For now, we'll use a dummy slice of workload IDs for the example
-	workloadIDs := []string{"workload1", "workload2", "workload3"}
-
-	for _, workloadID := range workloadIDs {
-		// Call the ManageWorkloadKey method for each workloadID
-		err := wh.ManageWorkloadKey(wh.RedisHandler, workloadID, wh.UUID)
-		if err != nil {
-			log.Printf("[%s] Error managing workload key for '%s': %v", wh.logTag, workloadID, err)
+	scenarios := wh.scenarioStore.GetAllValues()
+	for _, scenario := range scenarios {
+		if scenario == nil || scenario.Workloads == nil {
+			logger.Error(workloadLogTag, "Scenario or workloads in nil.")
+			continue
+		}
+		for workloadID, _ := range *scenario.Workloads {
+			// Call the ManageWorkloadKey method for each workloadID
+			err := wh.ManageWorkloadKey(workloadID)
+			if err != nil {
+				logger.Error(workloadLogTag, "Error managing workload key for ", workloadID, " err: ", err)
+			}
 		}
 	}
 }
 
-func (wh *WorkloadKeyHandler) ManageWorkloadKey(h *RedisHandler, workloadID string, podUUID string) error {
+func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	// 1. Create a key with value(rename_worker_<workload_id>) as the UUID of the pod with ttl as 1min
 	keyName := fmt.Sprintf("rename_worker_%s", workloadID)
-	if err := h.SetWithTTL(keyName, podUUID, time.Minute); err != nil {
+	if err := wh.RedisHandler.SetWithTTL(keyName, wh.UUID, time.Minute); err != nil {
 		return fmt.Errorf("error setting key with TTL: %v", err)
 	}
 
@@ -94,18 +98,18 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(h *RedisHandler, workloadID stri
 		return fmt.Errorf("error getting value for key %s: %v", keyName, err)
 	}
 
-	if currentValue == podUUID {
-		// 3.1 If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
+	if currentValue == wh.UUID {
+		// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
 		newKeyName := fmt.Sprintf("%s_%02d", workloadID, (highestSuffix+1)%60)
-		if err := h.Rename("workload_latest", newKeyName); err != nil {
+		if err := wh.RedisHandler.Rename("workload_latest", newKeyName); err != nil {
 			return fmt.Errorf("error renaming key: %v", err)
 		}
-		if err := h.SetWithTTL(newKeyName, podUUID, 15*time.Minute); err != nil {
+		if err := wh.RedisHandler.SetWithTTL(newKeyName, wh.UUID, 15*time.Minute); err != nil {
 			return fmt.Errorf("error setting TTL for new key: %v", err)
 		}
 	} else {
-		// 3.2 If it’s not the same, then ignore.
-		logger.Info(redisHandlerLogTag, "UUID mismatch, ignoring rename operation")
+		// If it’s not the same, then ignore.
+		logger.Info(workloadLogTag, "UUID mismatch, ignoring rename operation")
 	}
 
 	return nil

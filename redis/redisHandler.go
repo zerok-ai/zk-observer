@@ -26,6 +26,22 @@ type RedisHandler struct {
 	tag          string
 }
 
+func NewRedisHandlerWithoutTicker(redisConfig *zkconfig.RedisConfig, dbName string, tag string) (*RedisHandler, error) {
+	handler := RedisHandler{
+		ctx:    context.Background(),
+		config: redisConfig,
+		dbName: dbName,
+	}
+
+	err := handler.InitializeRedisConn()
+	if err != nil {
+		logger.Error(redisHandlerLogTag, "Error while initializing redis connection ", err)
+		return nil, err
+	}
+	handler.tag = tag
+	return &handler, nil
+}
+
 func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInterval int, batchSize int, tag string) (*RedisHandler, error) {
 	handler := RedisHandler{
 		ctx:    context.Background(),

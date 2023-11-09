@@ -11,11 +11,15 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
+	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 	"net"
 	"os"
+	"time"
 )
 
 var mainLogTag = "main"
@@ -37,8 +41,12 @@ func main() {
 
 	logger.Init(otlpConfig.Logs)
 	storeFactory := *stores.GetStoreFactory(otlpConfig.Redis, ctx)
-
-	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory)
+	scenarioStore, err := zkredis.GetVersionedStore[zkmodel.Scenario](&otlpConfig.Redis, clientDBNames.ScenariosDBName, time.Duration(otlpConfig.Scenario.SyncDuration)*time.Second)
+	if err != nil {
+		logger.Error(mainLogTag, "Error while scenarioDb store:", err)
+		return
+	}
+	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory, scenarioStore)
 
 	if err != nil {
 		logger.Error(mainLogTag, "Error while creating traceHandler:", err)
