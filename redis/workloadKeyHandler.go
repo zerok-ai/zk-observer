@@ -94,6 +94,7 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	// Find the highest suffix.
 	highestSuffix := -1
 	for _, key := range keys {
+		logger.Info(workloadLogTag, "Key found: ", key)
 		var suffix int
 		_, err := fmt.Sscanf(key, workloadID+"_%d", &suffix)
 		if err == nil && suffix > highestSuffix {
@@ -115,6 +116,7 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
 	newKeyName := fmt.Sprintf("%s_%d", workloadID, (highestSuffix+1)%60)
 	oldKeyName := fmt.Sprintf("%s_latest", workloadID)
+	logger.Info(workloadLogTag, "Renaming key ", oldKeyName, " to ", newKeyName)
 	if err := wh.RedisHandler.RenameKeyWithTTL(oldKeyName, newKeyName, 15*time.Minute); err != nil {
 		err := wh.RedisHandler.RemoveKey(lockKeyName)
 		if err != nil {
