@@ -118,8 +118,8 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	oldKeyName := fmt.Sprintf("%s_latest", workloadID)
 	logger.Info(workloadLogTag, "Renaming key ", oldKeyName, " to ", newKeyName)
 	if err := wh.RedisHandler.RenameKeyWithTTL(oldKeyName, newKeyName, 15*time.Minute); err != nil {
-		err := wh.RedisHandler.RemoveKey(lockKeyName)
-		if err != nil {
+		err2 := wh.RedisHandler.RemoveKey(lockKeyName)
+		if err2 != nil {
 			logger.Error(workloadLogTag, "Error removing the lock key for workloadId ", workloadID)
 			return fmt.Errorf("error removing the lock key for workloadId %s", workloadID)
 		}
