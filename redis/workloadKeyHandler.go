@@ -48,7 +48,7 @@ func NewWorkloadKeyHandler(cfg *config.OtlpConfig, store *zkredis.VersionedStore
 	return handler, nil
 }
 
-// manageWorkloadKeys retrieves scenarios from a store and calls ManageWorkloadKey for each one.
+// manageWorkloadKeys retrieves scenarios from scenario store and calls ManageWorkloadKey for all workloads.
 func (wh *WorkloadKeyHandler) manageWorkloadKeys() {
 	scenarios := wh.scenarioStore.GetAllValues()
 	for _, scenario := range scenarios {
@@ -57,7 +57,6 @@ func (wh *WorkloadKeyHandler) manageWorkloadKeys() {
 			continue
 		}
 		for workloadID, _ := range *scenario.Workloads {
-			// Call the ManageWorkloadKey method for each workloadID
 			err := wh.ManageWorkloadKey(workloadID)
 			if err != nil {
 				logger.Error(workloadLogTag, "Error managing workload key for ", workloadID, " err: ", err)
@@ -67,13 +66,25 @@ func (wh *WorkloadKeyHandler) manageWorkloadKeys() {
 }
 
 func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
-	// 1. Create a key with value(rename_worker_<workload_id>) as the UUID of the pod with ttl as 1min
-	keyName := fmt.Sprintf("rename_worker_%s", workloadID)
-	if err := wh.RedisHandler.SetWithTTL(keyName, wh.UUID, time.Minute); err != nil {
+
+	lockKeyName := fmt.Sprintf("rename_worker_%s", workloadID)
+	currentValue, err := wh.RedisHandler.Get(lockKeyName)
+	if err != nil {
+		return fmt.Errorf("error getting value for lock key %s: %v", lockKeyName, err)
+	}
+
+	if currentValue != "" {
+		logger.Info(workloadLogTag, "Another UUID already present, ignoring the operation for workload ", workloadID)
+		return nil
+	}
+
+	// 2. Create a key with value(rename_worker_<workload_id>) as the UUID of the pod with ttl as 1min
+
+	if err := wh.RedisHandler.SetWithTTL(lockKeyName, wh.UUID, time.Minute); err != nil {
 		return fmt.Errorf("error setting key with TTL: %v", err)
 	}
 
-	// 2. Use the utility method to get keys by pattern
+	// 3. Use the utility method to get keys by pattern
 	pattern := fmt.Sprintf("%s_*", workloadID)
 	keys, err := wh.RedisHandler.GetKeysByPattern(pattern)
 	if err != nil {
@@ -90,21 +101,27 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 		}
 	}
 
-	// 3. Go back and check if the value of the key created in step 1 is still its own UUID.
-	currentValue, err := wh.RedisHandler.Get(keyName)
+	// 4. Go back and check if the value of the key created in step 1 is still its own UUID.
+	currentValue, err = wh.RedisHandler.Get(lockKeyName)
 	if err != nil {
-		return fmt.Errorf("error getting value for key %s: %v", keyName, err)
+		return fmt.Errorf("error getting value for key %s: %v", lockKeyName, err)
 	}
 
-	if currentValue == wh.UUID {
-		// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
-		newKeyName := fmt.Sprintf("%s_%d", workloadID, (highestSuffix+1)%60)
-		if err := wh.RedisHandler.Rename("workload_latest", newKeyName); err != nil {
-			return fmt.Errorf("error renaming key: %v", err)
-		}
-	} else {
-		// If it’s not the same, then ignore.
+	if currentValue != wh.UUID {
 		logger.Info(workloadLogTag, "UUID mismatch, ignoring rename operation")
+		return nil
+	}
+
+	// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
+	newKeyName := fmt.Sprintf("%s_%d", workloadID, (highestSuffix+1)%60)
+	oldKeyName := fmt.Sprintf("%s_latest", workloadID)
+	if err := wh.RedisHandler.RenameKeyWithTTL(oldKeyName, newKeyName, 15*time.Minute); err != nil {
+		err := wh.RedisHandler.RemoveKey(lockKeyName)
+		if err != nil {
+			logger.Error(workloadLogTag, "Error removing the lock key for workloadId ", workloadID)
+			return fmt.Errorf("error removing the lock key for workloadId %s", workloadID)
+		}
+		return fmt.Errorf("error renaming key: %v", err)
 	}
 
 	return nil

@@ -153,13 +153,30 @@ func (h *RedisHandler) SetWithTTL(key string, value interface{}, ttl time.Durati
 	return h.RedisClient.Set(h.ctx, key, value, ttl).Err()
 }
 
-func (h *RedisHandler) Rename(oldKey string, newKey string) error {
-	statusCmd := h.RedisClient.Rename(h.ctx, oldKey, newKey)
-	if statusCmd.Err() != nil {
-		logger.Error(redisHandlerLogTag, fmt.Sprintf("Error while renaming key from %s to %s ", oldKey, newKey), statusCmd.Err())
-		return statusCmd.Err()
+func (h *RedisHandler) RemoveKey(key string) error {
+	_, err := h.RedisClient.Del(h.ctx, key).Result()
+	if err != nil {
+		return err
 	}
-	logger.Info(redisHandlerLogTag, fmt.Sprintf("Key renamed from %s to %s", oldKey, newKey))
+	return nil
+}
+
+func (h *RedisHandler) RenameKeyWithTTL(oldKey string, newKey string, ttl time.Duration) error {
+	// Use the RENAME command to rename the key.
+	_, err := h.RedisClient.Rename(h.ctx, oldKey, newKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			logger.Error(redisHandlerLogTag, "Key does not exist in redis ", oldKey)
+		}
+		return err
+	}
+
+	// Set the TTL on the new key.
+	_, err = h.RedisClient.Expire(h.ctx, newKey, ttl).Result()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
