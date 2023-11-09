@@ -16,8 +16,6 @@ import (
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -43,6 +41,7 @@ type WorkLoadTraceId struct {
 type WorkloadIdList []string
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore, store *zkredis.VersionedStore[zkmodel.Scenario]) (*SpanFilteringHandler, error) {
+	rand.Seed(time.Now().UnixNano())
 	redisHandler, err := NewRedisHandler(&cfg.Redis, clientDBNames.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
@@ -228,15 +227,10 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		workloadId := workLoadTraceId.WorkLoadId
 		traceId := workLoadTraceId.TraceId
 
-		suffix, err := h.getCurrentSuffix()
-		if err != nil {
-			logger.Error(spanFilteringLogTag, "Error while getting suffix for workloadId ", workloadId)
-			return true
-		}
-		redisKey := workloadId + "_" + suffix
+		redisKey := workloadId + "_latest"
 		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
 		//logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
-		err = h.redisHandler.SAddPipeline(redisKey, traceId, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
+		err := h.redisHandler.SAddPipeline(redisKey, traceId, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
 		if err != nil {
 			logger.Error(spanFilteringLogTag, "Error while setting workload data: ", err)
 			return true
@@ -249,26 +243,6 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		h.workloadDetails.Delete(key)
 	}
 	return nil
-}
-
-func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
-
-	currentTime := time.Now().UTC()
-	timeFormatted := currentTime.Format("15:04")
-
-	timeParts := strings.Split(timeFormatted, ":")
-	minutesPart := timeParts[1]
-
-	minutes, err := strconv.Atoi(minutesPart)
-	if err != nil {
-		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
-		return "", err
-	}
-
-	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration / 60)
-	logger.InfoF(spanFilteringLogTag, "suffix calculation: timeFormatted=%v, minutesPart=%v, minutes=%d, bucketActiveDuration=%d suffix=%d", timeFormatted, minutesPart, minutes, h.Cfg.Workloads.BucketActiveDuration, suffix)
-
-	return fmt.Sprintf("%v", suffix), nil
 }
 
 func (h *SpanFilteringHandler) getRandomNumber() string {
