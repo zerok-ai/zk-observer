@@ -22,7 +22,6 @@ var workloadLogTag = "WorkloadKeyHandler"
 type WorkloadKeyHandler struct {
 	RedisHandler  *RedisHandler
 	UUID          string
-	logTag        string
 	scenarioStore *zkredis.VersionedStore[zkmodel.Scenario]
 	ticker        *zktick.TickerTask
 }
@@ -40,7 +39,6 @@ func NewWorkloadKeyHandler(cfg *config.OtlpConfig, store *zkredis.VersionedStore
 	handler := &WorkloadKeyHandler{
 		RedisHandler:  redisHandler,
 		UUID:          uniqueId,
-		logTag:        "WorkloadKeyHandler",
 		scenarioStore: store,
 	}
 
@@ -100,12 +98,9 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 
 	if currentValue == wh.UUID {
 		// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
-		newKeyName := fmt.Sprintf("%s_%02d", workloadID, (highestSuffix+1)%60)
+		newKeyName := fmt.Sprintf("%s_%d", workloadID, (highestSuffix+1)%60)
 		if err := wh.RedisHandler.Rename("workload_latest", newKeyName); err != nil {
 			return fmt.Errorf("error renaming key: %v", err)
-		}
-		if err := wh.RedisHandler.SetWithTTL(newKeyName, wh.UUID, 15*time.Minute); err != nil {
-			return fmt.Errorf("error setting TTL for new key: %v", err)
 		}
 	} else {
 		// If it’s not the same, then ignore.
