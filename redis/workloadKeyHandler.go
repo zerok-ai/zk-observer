@@ -14,6 +14,7 @@ import (
 
 const (
 	TickerInterval = 1 * time.Minute
+	WorkloadTTL    = 15 * time.Minute
 )
 
 var workloadLogTag = "WorkloadKeyHandler"
@@ -74,13 +75,13 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	}
 
 	if currentValue != "" {
-		logger.Info(workloadLogTag, "Another UUID already present, ignoring the operation for workload ", workloadID)
+		logger.Debug(workloadLogTag, "Another UUID already present, ignoring the operation for workload ", workloadID)
 		return nil
 	}
 
 	// 2. Create a key with value(rename_worker_<workload_id>) as the UUID of the pod with ttl as 1min
 
-	if err := wh.RedisHandler.SetWithTTL(lockKeyName, wh.UUID, time.Minute); err != nil {
+	if err := wh.RedisHandler.SetWithTTL(lockKeyName, wh.UUID, TickerInterval); err != nil {
 		return fmt.Errorf("error setting key with TTL: %v", err)
 	}
 
@@ -94,7 +95,7 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	// Find the highest suffix.
 	highestSuffix := -1
 	for _, key := range keys {
-		logger.Info(workloadLogTag, "Key found: ", key)
+		logger.Debug(workloadLogTag, "Key found: ", key)
 		var suffix int
 		_, err := fmt.Sscanf(key, workloadID+"_%d", &suffix)
 		if err == nil && suffix > highestSuffix {
@@ -109,15 +110,15 @@ func (wh *WorkloadKeyHandler) ManageWorkloadKey(workloadID string) error {
 	}
 
 	if currentValue != wh.UUID {
-		logger.Info(workloadLogTag, "UUID mismatch, ignoring rename operation")
+		logger.Debug(workloadLogTag, "UUID mismatch, ignoring rename operation")
 		return nil
 	}
 
 	// If it’s the same, then rename the key workload_latest to the new key calculated in step 2 and set the ttl as 15mins.
 	newKeyName := fmt.Sprintf("%s_%d", workloadID, (highestSuffix+1)%60)
 	oldKeyName := fmt.Sprintf("%s_latest", workloadID)
-	logger.Info(workloadLogTag, "Renaming key ", oldKeyName, " to ", newKeyName)
-	if err := wh.RedisHandler.RenameKeyWithTTL(oldKeyName, newKeyName, 15*time.Minute); err != nil {
+	logger.Debug(workloadLogTag, "Renaming key ", oldKeyName, " to ", newKeyName)
+	if err := wh.RedisHandler.RenameKeyWithTTL(oldKeyName, newKeyName, WorkloadTTL); err != nil {
 		err2 := wh.RedisHandler.RemoveKey(lockKeyName)
 		if err2 != nil {
 			logger.Error(workloadLogTag, "Error removing the lock key for workloadId ", workloadID)

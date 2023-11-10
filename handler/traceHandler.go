@@ -14,11 +14,13 @@ import (
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
 	"strings"
 	"sync"
+	"time"
 )
 
 var traceLogTag = "TraceHandler"
@@ -37,7 +39,7 @@ type TraceHandler struct {
 	workloadKeyHandler     *redis.WorkloadKeyHandler
 }
 
-func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory, scenarioStore *zkredis.VersionedStore[ExecutorModel.Scenario]) (*TraceHandler, error) {
+func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
 	if err != nil {
@@ -66,6 +68,13 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory, sce
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
 	handler.factory = factory
+
+	scenarioStore, err := zkredis.GetVersionedStore[ExecutorModel.Scenario](&config.Redis, clientDBNames.ScenariosDBName, time.Duration(config.Scenario.SyncDuration)*time.Second)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while scenarioDb store:", err)
+		return nil, err
+	}
+
 	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore, scenarioStore)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
