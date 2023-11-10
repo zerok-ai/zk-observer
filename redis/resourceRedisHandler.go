@@ -3,10 +3,10 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"sync"
 )
 
@@ -20,7 +20,7 @@ type ResourceRedisHandler struct {
 
 func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler, error) {
 	handler := ResourceRedisHandler{}
-	redisHandler, err := NewRedisHandler(&config.Redis, common.PodDetailsDbName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
+	redisHandler, err := NewRedisHandler(&config.Redis, clientDBNames.PodDetailsDBName, config.Resources.SyncDuration, config.Resources.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err

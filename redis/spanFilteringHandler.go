@@ -12,6 +12,7 @@ import (
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"
 	zkredis "github.com/zerok-ai/zk-utils-go/storage/redis"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
@@ -43,12 +44,12 @@ type WorkloadIdList []string
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
-	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, common.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
+	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, clientDBNames.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
-	redisHandler, err := NewRedisHandler(&cfg.Redis, common.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
+	redisHandler, err := NewRedisHandler(&cfg.Redis, clientDBNames.FilteredTracesDBName, cfg.Workloads.SyncDuration, cfg.Workloads.BatchSize, resourceLogTag)
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while creating resource redis handler:", err)
 		return nil, err
@@ -258,7 +259,7 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 
 func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	timeFormatted := currentTime.Format("15:04")
 
 	timeParts := strings.Split(timeFormatted, ":")
@@ -269,7 +270,10 @@ func (h *SpanFilteringHandler) getCurrentSuffix() (string, error) {
 		logger.Error(spanFilteringLogTag, "Error while converting minutes to int.", err)
 		return "", err
 	}
-	suffix := minutes / 5
+
+	suffix := minutes / (h.Cfg.Workloads.BucketActiveDuration / 60)
+	logger.InfoF(spanFilteringLogTag, "suffix calculation: timeFormatted=%v, minutesPart=%v, minutes=%d, bucketActiveDuration=%d suffix=%d", timeFormatted, minutesPart, minutes, h.Cfg.Workloads.BucketActiveDuration, suffix)
+
 	return fmt.Sprintf("%v", suffix), nil
 }
 
