@@ -7,7 +7,6 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/tests/mocks"
 	"os"
 	"testing"
-	"time"
 	// other necessary imports
 )
 
@@ -97,7 +96,7 @@ func TestLockTtl(t *testing.T) {
 
 	fmt.Println(actualValue)
 
-	assert.Equal(t, time.Minute, actualValue)
+	assert.Equal(t, redis.TickerInterval, actualValue)
 }
 
 func TestWorkloadKeyTtl(t *testing.T) {
@@ -122,5 +121,5 @@ func TestWorkloadKeyTtl(t *testing.T) {
 
 	fmt.Println(actualValue)
 
-	assert.Equal(t, 15*time.Minute, actualValue)
+	assert.Equal(t, redis.WorkloadTTL, actualValue)
 }
