@@ -21,7 +21,7 @@ var workloadLogTag = "WorkloadKeyHandler"
 
 // WorkloadKeyHandler handles periodic tasks to manage workload keys in Redis.
 type WorkloadKeyHandler struct {
-	RedisHandler  *RedisHandler
+	RedisHandler  RedisHandlerInterface
 	UUID          string
 	scenarioStore *zkredis.VersionedStore[zkmodel.Scenario]
 	ticker        *zktick.TickerTask
