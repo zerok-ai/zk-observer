@@ -1,7 +1,7 @@
 apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
 metadata:
-  name: demo-instrumentation-all
+  name: demo-instrumentation-golang
   annotations:
     instrumentation.opentelemetry.io/default-auto-instrumentation-apache-httpd-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:1.0.3
     instrumentation.opentelemetry.io/default-auto-instrumentation-dotnet-image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.0.2

@@ -26,22 +26,6 @@ type RedisHandler struct {
 	tag          string
 }
 
-func NewRedisHandlerWithoutTicker(redisConfig *zkconfig.RedisConfig, dbName string, tag string) (*RedisHandler, error) {
-	handler := RedisHandler{
-		ctx:    context.Background(),
-		config: redisConfig,
-		dbName: dbName,
-	}
-
-	err := handler.InitializeRedisConn()
-	if err != nil {
-		logger.Error(redisHandlerLogTag, "Error while initializing redis connection ", err)
-		return nil, err
-	}
-	handler.tag = tag
-	return &handler, nil
-}
-
 func NewRedisHandler(redisConfig *zkconfig.RedisConfig, dbName string, syncInterval int, batchSize int, tag string) (*RedisHandler, error) {
 	handler := RedisHandler{
 		ctx:    context.Background(),
@@ -92,18 +76,6 @@ func (h *RedisHandler) Set(key string, value interface{}) error {
 	return statusCmd.Err()
 }
 
-func (h *RedisHandler) Get(key string) (string, error) {
-	result, err := h.RedisClient.Get(h.ctx, key).Result()
-	if err == redis.Nil {
-		// Key does not exist
-		return "", nil
-	} else if err != nil {
-		logger.Error(redisHandlerLogTag, "Failed to get key from Redis:", err)
-		return "", err
-	}
-	return result, nil
-}
-
 func (h *RedisHandler) SetNX(key string, value interface{}) error {
 	statusCmd := h.RedisClient.SetNX(h.ctx, key, value, 0)
 	return statusCmd.Err()
@@ -138,46 +110,6 @@ func (h *RedisHandler) HMSetPipeline(key string, value map[string]string, expira
 		return cmd.Err()
 	}
 	return h.setExpiry(key, expiration)
-}
-
-func (h *RedisHandler) GetKeysByPattern(pattern string) ([]string, error) {
-	keys, err := h.RedisClient.Keys(h.ctx, pattern).Result()
-	if err != nil {
-		logger.Error(redisHandlerLogTag, fmt.Sprintf("Error retrieving keys for pattern %s: ", pattern), err)
-		return nil, err
-	}
-	return keys, nil
-}
-
-func (h *RedisHandler) SetWithTTL(key string, value interface{}, ttl time.Duration) error {
-	return h.RedisClient.Set(h.ctx, key, value, ttl).Err()
-}
-
-func (h *RedisHandler) RemoveKey(key string) error {
-	_, err := h.RedisClient.Del(h.ctx, key).Result()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (h *RedisHandler) RenameKeyWithTTL(oldKey string, newKey string, ttl time.Duration) error {
-	// Use the RENAME command to rename the key.
-	_, err := h.RedisClient.Rename(h.ctx, oldKey, newKey).Result()
-	if err != nil {
-		if err == redis.Nil {
-			logger.Error(redisHandlerLogTag, "Key does not exist in redis ", oldKey)
-		}
-		return err
-	}
-
-	// Set the TTL on the new key.
-	_, err = h.RedisClient.Expire(h.ctx, newKey, ttl).Result()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (h *RedisHandler) SetNXPipeline(key string, value interface{}, expiration time.Duration) error {
