@@ -4,10 +4,12 @@ go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.3
+	github.com/google/uuid v1.3.1
 	github.com/ilyakaznacheev/cleanenv v1.5.0
-	github.com/kataras/iris/v12 v12.2.7
+	github.com/kataras/iris/v12 v12.2.0
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.5.13
+	github.com/stretchr/testify v1.8.4
+	github.com/zerok-ai/zk-utils-go v0.5.14
 	go.opentelemetry.io/proto/otlp v1.0.0
 	google.golang.org/grpc v1.58.2
 	k8s.io/apimachinery v0.28.2
@@ -26,6 +28,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/flosch/pongo2/v4 v4.0.2 // indirect
@@ -39,10 +42,8 @@ require (
 	github.com/go-playground/validator/v10 v10.15.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
@@ -65,11 +66,13 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/schollz/closestmatch v2.1.0+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tdewolff/minify/v2 v2.12.9 // indirect
 	github.com/tdewolff/parse/v2 v2.6.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
