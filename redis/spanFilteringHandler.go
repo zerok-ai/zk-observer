@@ -40,7 +40,7 @@ type WorkLoadTraceId struct {
 
 type WorkloadIdList []string
 
-func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore, store *zkredis.VersionedStore[zkmodel.Scenario]) (*SpanFilteringHandler, error) {
+func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
 	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, clientDBNames.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
