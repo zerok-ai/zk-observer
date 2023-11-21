@@ -25,7 +25,7 @@ data:
     traces:
       syncDuration: 30
       batchSize: 30
-      ttl: 1800
+      ttl: 900
     workloads:
       syncDuration: 30
       batchSize: 30
