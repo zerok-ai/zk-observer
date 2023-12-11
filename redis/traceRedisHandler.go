@@ -2,9 +2,7 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"time"
@@ -38,7 +36,7 @@ func (h *TraceRedisHandler) CheckRedisConnection() error {
 	return h.redisHandler.CheckRedisConnection()
 }
 
-func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDetails model.OTelSpanDetails) error {
+func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanJSON string) error {
 
 	if err := h.redisHandler.CheckRedisConnection(); err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
@@ -46,14 +44,8 @@ func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanDeta
 	}
 
 	spanJsonMap := make(map[string]string)
-	spanJSON, err := json.Marshal(spanDetails)
-	if err != nil {
-		logger.Debug(traceRedisHandlerLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanId, err)
-		return err
-	}
-	spanJsonMap[spanId] = string(spanJSON)
-	err = h.redisHandler.HMSetPipeline(traceId, spanJsonMap, time.Duration(h.config.Traces.Ttl)*time.Second)
-	if err != nil {
+	spanJsonMap[spanId] = spanJSON
+	if err := h.redisHandler.HMSetPipeline(traceId, spanJsonMap, time.Duration(h.config.Traces.Ttl)*time.Second); err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while setting trace details for traceId %s: %v\n", traceId, err)
 		return err
 	}

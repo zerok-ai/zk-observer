@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -359,19 +360,28 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 	// Iterate over the sync.Map and push the data to redis
 	th.traceStore.Range(func(key, value interface{}) bool {
 		keyStr := key.(string)
-		spanDetails := value.(model.OTelSpanDetails)
 		//Split keyStr using delimiter.
 		ids := strings.Split(keyStr, delimiter)
-		if len(ids) == 2 {
-			traceIDStr := ids[0]
-			spanIDStr := ids[1]
-			err := th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanDetails)
-			if err != nil {
-				logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
-				// Returning false to stop the iteration
-				return false
-			}
+		if len(ids) != 2 {
+			logger.Error(traceLogTag, "Error while splitting key ", keyStr)
+			return true
 		}
+		traceIDStr := ids[0]
+		spanIDStr := ids[1]
+
+		spanJSON, err := json.Marshal(value)
+		if err != nil {
+			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
+			return true
+		}
+
+		err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
+		if err != nil {
+			logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
+			// Returning false to stop the iteration
+			return false
+		}
+
 		keysToDelete = append(keysToDelete, keyStr)
 		return true
 	})
