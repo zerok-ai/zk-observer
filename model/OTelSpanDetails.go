@@ -21,9 +21,12 @@ type OTelSpanDetails struct {
 	Errors        []SpanErrorInfo `json:"errors,omitempty"`
 
 	// Span Attributes
-	SpanAttributes         *GenericMap `json:"attributes,omitempty"`
-	ResourceAttributesHash string      `json:"resource_attributes_hash,omitempty"`
-	ScopeAttributesHash    string      `json:"scope_attributes_hash,omitempty"`
+	SpanAttributes     *GenericMap `json:"attributes,omitempty"`
+	ResourceAttributes *GenericMap `json:"resource_attributes,omitempty"`
+	ScopeAttributes    *GenericMap `json:"scope_attributes,omitempty"`
+
+	ResourceAttributesHash string `json:"resource_attributes_hash,omitempty"`
+	ScopeAttributesHash    string `json:"scope_attributes_hash,omitempty"`
 
 	// Span Identifier Properties
 	ServiceName string `json:"service_name"`

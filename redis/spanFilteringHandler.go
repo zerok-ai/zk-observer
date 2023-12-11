@@ -66,7 +66,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -80,7 +80,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[st
 			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap)
 		if len(processedWorkloadIds) > 0 {
 			if satisfiedWorkLoadIds == nil {
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
@@ -142,7 +142,7 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
-func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) bool {
+func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
 	if workload.Executor != zkmodel.ExecutorOTel {
 		logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 		return false
@@ -153,6 +153,7 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		return false
 	}
 
+	resourceAttrMap := spanDetailsMap["resource_attributes"].(map[string]string)
 	//var k8sNamespace, k8sDeployment string
 	k8sNamespace, nsOk := resourceAttrMap[common.OTelResourceAttrNamespaceKey]
 	if !nsOk || k8sNamespace == "" {
@@ -182,7 +183,7 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 	return true
 }
 
-func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) WorkloadIdList {
+func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
 	workloads := scenario.Workloads
@@ -193,7 +194,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 	logger.Debug(spanFilteringLogTag, "Workloads found for scenario: ", scenario.Title, " workloads: ", workloads)
 	for id, workload := range *workloads {
 		// Check if span is to be evaluated for this workload
-		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap, resourceAttrMap, spanAttrMap) {
+		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap) {
 			logger.Debug(spanFilteringLogTag, "Span not to be evaluated for workload: ", id)
 			continue
 		}

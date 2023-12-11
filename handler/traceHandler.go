@@ -173,22 +173,25 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				//TODO: Make this Async.
 				if EvaluateZeroKSpan == false {
 					// Evaluating and storing data in zk span format.
-					spanDetails := th.generateSpanDetails(span, schemaVersion, resourceAttrMap, resourceAttrHash, scopeAttrHash)
-					workloadIds, groupBy := th.filterSpansOnZkSpanDetails(traceId, spanId, spanDetails, resourceAttrMap)
+					spanDetails := th.generateSpanDetails(span, schemaVersion, resourceAttrMap, resourceAttrHash, scopeAttrMap, scopeAttrHash)
+					spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
+
+					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap)
 					spanDetails.WorkloadIdList = workloadIds
 					spanDetails.GroupBy = groupBy
 
 					resourceIp = utils.GetResourceIp(spanDetails.SpanKind, *spanDetails.SourceIp, *spanDetails.DestIp)
 
 					th.addZkSpanToTraceStore(key, spanDetails)
-
 				} else {
 					spanAttributes := utils.ConvertKVListToMap(span.Attributes)
 					spanJSON := utils.ObjectToInterfaceMap(span)
 					spanJSON["latency_ns"] = span.EndTimeUnixNano - span.StartTimeUnixNano
 					spanJSON["attributes"] = spanAttributes
+					spanJSON["resource_attributes"] = resourceAttrMap
+					spanJSON["scope_attributes"] = scopeAttrMap
 					// Evaluating and storing data in Otel span format.
-					workloadIds, groupBy := th.filterSpansOnOTelSpanDetails(traceId, spanId, spanJSON, resourceAttrMap, scopeAttrMap)
+					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 
 					spanKind := model.NewFromOTelSpan(span.Kind)
 					sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
@@ -225,25 +228,8 @@ func (th *TraceHandler) EvalAndStoreZkSpan() {
 
 }
 
-// Execute rules on the span and populate the span details.
-func (th *TraceHandler) filterSpansOnOTelSpanDetails(traceId string, spanId string, spanDetailsMap model.GenericMap, spanAttrMap model.GenericMap, resourceAttrMap model.GenericMap) ([]string, model.GroupByMap) {
-	logger.Debug(traceLogTag, "Performing span filtering on OTel span ", spanId)
-	workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
-	return workloadIds, groupBy
-}
-
-// Execute rules on the span and populate the span details.
-func (th *TraceHandler) filterSpansOnZkSpanDetails(traceId string, spanId string, spanDetails model.OTelSpanDetails, resourceAttrMap model.GenericMap) ([]string, model.GroupByMap) {
-	spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
-	spanAttrMap := *spanDetails.SpanAttributes
-
-	logger.Debug(traceLogTag, "Performing span filtering on ZK span ", spanId)
-	workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
-	return workloadIds, groupBy
-}
-
 // Generate Span details from the span.
-func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion string, resourceAttrMap model.GenericMap, resourceAttrHash string, scopeAttrHash string) model.OTelSpanDetails {
+func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion string, resourceAttrMap model.GenericMap, resourceAttrHash string, scopeAttrMap model.GenericMap, scopeAttrHash string) model.OTelSpanDetails {
 	spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
 	spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
 	spanDetails.SchemaVersion = schemaVersion
@@ -251,6 +237,9 @@ func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion st
 	/* Populate attributes */
 	if th.otlpConfig.SetSpanAttributes {
 		spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
+		spanDetails.ResourceAttributes = &resourceAttrMap
+		spanDetails.ScopeAttributes = &scopeAttrMap
+
 		spanDetails.ScopeAttributesHash = scopeAttrHash
 		spanDetails.ResourceAttributesHash = resourceAttrHash
 	}
