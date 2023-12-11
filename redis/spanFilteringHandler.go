@@ -155,7 +155,7 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 
 	// TODO: Check for service name in otel span instead of namespace & deployment name.
 
-	resourceAttributes, ok := spanDetailsMap["resource_attributes"]
+	resourceAttributes, ok := spanDetailsMap[common.OTelResourceAttrKey]
 	if !ok || resourceAttributes == nil {
 		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
 		return true
