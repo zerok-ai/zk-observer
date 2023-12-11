@@ -66,7 +66,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -86,7 +86,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTe
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 			}
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, processedWorkloadIds...)
-			if groupByValues, hasData := h.processGroupBy(scenario, spanDetails, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
+			if groupByValues, hasData := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
 				if groupByMap == nil {
 					groupByMap = make(model.GroupByMap)
 				}
@@ -101,7 +101,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTe
 	return satisfiedWorkLoadIds, groupByMap
 }
 
-func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (model.GroupByValues, bool) {
+func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (model.GroupByValues, bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "processGroupBy: Recovered from panic: ", r)

@@ -162,43 +162,25 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					continue
 				}
 
-				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
-				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
-				spanDetails.SchemaVersion = schemaVersion
-
-				/* Populate attributes */
-				if th.otlpConfig.SetSpanAttributes {
-					spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
-					spanDetails.ScopeAttributes = model.GenericMapPtrFromMap(scopeAttrMap)
-					spanDetails.ResourceAttributes = model.GenericMapPtrFromMap(resourceAttrMap)
-				}
-
-				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
-
-				/* Detect Span protocol */
-				executorAttrStore := th.factory.GetExecutorAttrStore()
-				podDetailsStore := th.factory.GetPodDetailsStore()
-				protocolIdentifierStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolIdentifier)
-				identifierProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &protocolIdentifierStoreKey)
-				spanDetails.Protocol = identifierProtocolUtil.DetectSpanProtocol()
-
-				/* Populate Span protocol attributes */
-				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
-				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
-				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &attrStoreKey)
-				spanProtocolUtil.AddSpanProtocolProperties()
-
-				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
 				//TODO: Make this Async.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetails, spanDetailsMap, resourceAttrMap, spanAttrMap)
-				spanDetails.WorkloadIdList = workloadIds
-				spanDetails.GroupBy = groupBy
+				//spanDetails := th.generateSpanDetails(span, schemaVersion, resourceAttrMap, scopeAttrMap)
+				//workloadIds, groupBy := th.filterSpansOnZkSpanDetails(traceId, spanId, spanDetails)
+				//spanDetails.WorkloadIdList = workloadIds
+				//spanDetails.GroupBy = groupBy
+
+				logger.Debug(traceLogTag, "span schema version:", schemaVersion)
+				workloadIds, groupBy := th.filterSpansOnOTelSpanDetails(traceId, spanId, utils.ObjectToInterfaceMap(span), resourceAttrMap, scopeAttrMap)
+
+				spanAttributes := utils.ConvertKVListToMap(span.Attributes)
+				spanKind := model.NewFromOTelSpan(span.Kind)
+				sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
+				resourceIp := utils.GetResourceIp(spanKind, sourceIP, destIP)
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
 				th.addToTraceStore(key, spanDetails)
 
-				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
+				err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 				}
@@ -206,6 +188,55 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		}
 	}
 	defer logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
+}
+
+// Execute rules on the span and populate the span details.
+func (th *TraceHandler) filterSpansOnOTelSpanDetails(traceId string, spanId string, spanDetailsMap model.GenericMap, spanAttrMap model.GenericMap, resourceAttrMap model.GenericMap) ([]string, model.GroupByMap) {
+	logger.Debug(traceLogTag, "Performing span filtering on OTel span ", spanId)
+	workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
+	return workloadIds, groupBy
+}
+
+// Execute rules on the span and populate the span details.
+func (th *TraceHandler) filterSpansOnZkSpanDetails(traceId string, spanId string, spanDetails model.OTelSpanDetails) ([]string, model.GroupByMap) {
+	spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
+	spanAttrMap := *spanDetails.SpanAttributes
+	resourceAttrMap := *spanDetails.ResourceAttributes
+
+	logger.Debug(traceLogTag, "Performing span filtering on ZK span ", spanId)
+	workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
+	return workloadIds, groupBy
+}
+
+// Generate Span details from the span.
+func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion string, resourceAttrMap model.GenericMap, scopeAttrMap model.GenericMap) model.OTelSpanDetails {
+	spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
+	spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
+	spanDetails.SchemaVersion = schemaVersion
+
+	/* Populate attributes */
+	if th.otlpConfig.SetSpanAttributes {
+		spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
+		spanDetails.ScopeAttributes = model.GenericMapPtrFromMap(scopeAttrMap)
+		spanDetails.ResourceAttributes = model.GenericMapPtrFromMap(resourceAttrMap)
+	}
+
+	spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
+
+	/* Detect Span protocol */
+	executorAttrStore := th.factory.GetExecutorAttrStore()
+	podDetailsStore := th.factory.GetPodDetailsStore()
+	protocolIdentifierStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolIdentifier)
+	identifierProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &protocolIdentifierStoreKey)
+	spanDetails.Protocol = identifierProtocolUtil.DetectSpanProtocol()
+
+	/* Populate Span protocol attributes */
+	executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
+	attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
+	spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &attrStoreKey)
+	spanProtocolUtil.AddSpanProtocolProperties()
+
+	return spanDetails
 }
 
 // Populate Span common properties.

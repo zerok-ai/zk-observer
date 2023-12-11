@@ -206,7 +206,7 @@ func GetExecutorProtocolFromSpanProtocol(spanProtocol model.ProtocolType) zkmode
 	return zkmodel.ProtocolGeneral
 }
 
-func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]interface{} {
+func ObjectToInterfaceMap(spanDetails any) map[string]interface{} {
 	spanDetailMap := map[string]interface{}{}
 
 	// Json marshal spanDetails.
@@ -219,4 +219,13 @@ func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]inte
 	// Json unmarshal spanDetails.
 	err = json.Unmarshal(spanDetailsJSON, &spanDetailMap)
 	return spanDetailMap
+}
+
+func GetResourceIp(spanKind model.SpanKind, sourceIp string, destIp string) string {
+	if spanKind == model.SpanKindClient && len(sourceIp) > 0 {
+		return sourceIp
+	} else if spanKind == model.SpanKindServer && len(destIp) > 0 {
+		return destIp
+	}
+	return ""
 }

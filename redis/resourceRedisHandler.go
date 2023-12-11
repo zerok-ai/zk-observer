@@ -2,7 +2,6 @@ package redis
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -32,11 +31,7 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler
 	return &handler, nil
 }
 
-func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpanDetails, attrMap map[string]interface{}) error {
-	if spanDetailsInput == nil {
-		return fmt.Errorf("spanDetails are nil")
-	}
-
+func (h *ResourceRedisHandler) SyncResourceData(resourceIp string, attrMap map[string]interface{}) error {
 	if len(attrMap) == 0 {
 		//Nothing to sync.
 		return nil
@@ -48,10 +43,8 @@ func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpan
 		return err
 	}
 
-	spanDetails := *spanDetailsInput
-	resourceIp := spanDetails.GetResourceIP()
 	if len(resourceIp) == 0 {
-		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanDetails.SpanKind)
+		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty")
 	}
 
 	_, ok := h.existingResourceData.Load(resourceIp)
