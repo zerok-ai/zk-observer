@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -16,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -26,6 +29,11 @@ var NET_PEER_NAME = "net.peer.name"
 var NET_HOST_IP = "net.host.ip"
 var NET_PEER_IP = "net.peer.ip"
 var SERVER_SOCKET_ADDRESS = "server.socket.address"
+
+const (
+	ScopeAttributeHashPrefix    = "sh_" // sh stands for scope hash
+	ResourceAttributeHashPrefix = "rh_" // rh stands for resource hash
+)
 
 func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, resourceAttrMap map[string]interface{}) (string, string) {
 	destIP := ""
@@ -228,4 +236,21 @@ func GetResourceIp(spanKind model.SpanKind, sourceIp string, destIp string) stri
 		return destIp
 	}
 	return ""
+
+}
+
+func GetMD5OfMap(m map[string]interface{}) string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+	var mapStr string
+	for _, k := range keys {
+		mapStr += fmt.Sprintf("%s=%v", k, m[k])
+	}
+
+	hash := md5.Sum([]byte(mapStr))
+	return hex.EncodeToString(hash[:])
 }
