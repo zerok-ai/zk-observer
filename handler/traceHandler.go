@@ -183,11 +183,12 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					th.addZkSpanToTraceStore(key, spanDetails)
 
 				} else {
+					spanAttributes := utils.ConvertKVListToMap(span.Attributes)
 					spanJSON := utils.ObjectToInterfaceMap(span)
 					spanJSON["latency_ns"] = span.EndTimeUnixNano - span.StartTimeUnixNano
+					spanJSON["attributes"] = spanAttributes
 					// Evaluating and storing data in Otel span format.
 					workloadIds, groupBy := th.filterSpansOnOTelSpanDetails(traceId, spanId, spanJSON, resourceAttrMap, scopeAttrMap)
-					spanAttributes := utils.ConvertKVListToMap(span.Attributes)
 
 					spanKind := model.NewFromOTelSpan(span.Kind)
 					sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
