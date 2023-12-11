@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -37,6 +38,8 @@ func (h *ResourceAndScopeAttributesHandler) SyncResourceAndScopeAttrData(key str
 		return nil
 	}
 
+	attrStr, _ := json.Marshal(attrMap)
+
 	err := h.redisHandler.CheckRedisConnection()
 	if err != nil {
 		logger.Error(resourceLogTag, "Error while checking redis conn ", err)
@@ -45,12 +48,12 @@ func (h *ResourceAndScopeAttributesHandler) SyncResourceAndScopeAttrData(key str
 
 	_, ok := h.existingResourceData.Load(key)
 	if !ok {
-		err = h.redisHandler.HMSet(key, attrMap)
+		err = h.redisHandler.Set(key, attrStr)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 			return err
 		}
-		h.existingResourceData.Store(key, attrMap)
+		h.existingResourceData.Store(key, attrStr)
 	}
 
 	return nil
