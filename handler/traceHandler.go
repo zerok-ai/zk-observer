@@ -340,6 +340,9 @@ func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails mode
 func (th *TraceHandler) addZkSpanToTraceStore(key string, spanDetails model.OTelSpanDetails) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
+	// Clear scope and Resource attributes from TraceStore as they are not required in zk span.
+	spanDetails.ResourceAttributes = nil
+	spanDetails.ScopeAttributes = nil
 	th.traceStore.Store(key, spanDetails)
 }
 
