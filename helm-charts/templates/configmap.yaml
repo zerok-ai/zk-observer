@@ -22,6 +22,7 @@ data:
         executor_attr: 4
         pod_details: 7
         error_details: 8
+        resource_and_scope_attr: 5
     traces:
       syncDuration: 30
       batchSize: 30

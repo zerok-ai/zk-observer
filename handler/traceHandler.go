@@ -23,19 +23,26 @@ var delimiter = "__"
 var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
 
 type TraceHandler struct {
-	traceStore             sync.Map
-	traceStoreMutex        sync.Mutex
-	traceRedisHandler      *redis.TraceRedisHandler
-	exceptionHandler       *redis.ExceptionRedisHandler
-	resourceDetailsHandler *redis.ResourceRedisHandler
-	otlpConfig             *config.OtlpConfig
-	spanFilteringHandler   *redis.SpanFilteringHandler
-	factory                stores.StoreFactory
+	traceStore                   sync.Map
+	traceStoreMutex              sync.Mutex
+	traceRedisHandler            *redis.TraceRedisHandler
+	exceptionHandler             *redis.ExceptionRedisHandler
+	resourceDetailsHandler       *redis.ResourceRedisHandler
+	resourceAndScoperAttrHandler *redis.ResourceAndScopeAttributesHandler
+	otlpConfig                   *config.OtlpConfig
+	spanFilteringHandler         *redis.SpanFilteringHandler
+	factory                      stores.StoreFactory
 }
 
 func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while creating redis handler:", err)
+		return nil, err
+	}
+
+	resourceAndScopeAttrRedisHandler, err := redis.NewResourceAndScopeAttributesHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
@@ -62,6 +69,7 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*T
 	handler.traceRedisHandler = traceRedisHandler
 	handler.otlpConfig = config
 	handler.factory = factory
+	handler.resourceAndScoperAttrHandler = resourceAndScopeAttrRedisHandler
 	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
@@ -109,6 +117,7 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.exceptionHandler.SyncPipeline()
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
+	th.resourceAndScoperAttrHandler.SyncPipeline()
 }
 
 func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
@@ -159,6 +168,15 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				}
 
 				th.addToTraceStore(key, enrichedRawSpan)
+
+				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceAttrMap); err != nil {
+					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error is ", err)
+				}
+
+				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeAttrMap); err != nil {
+					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error is ", err)
+				}
+
 				//TODO: remove nil and pass correct value
 				err := th.resourceDetailsHandler.SyncResourceData(nil, resourceAttrMap)
 				if err != nil {
