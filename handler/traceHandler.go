@@ -126,13 +126,17 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		}
 		schemaVersion := utils.GetSchemaVersion(schemaUrl)
 		resourceAttrMap := map[string]interface{}{}
+		var resourceAttrHash string
 		if resourceSpan.Resource != nil {
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
+			resourceAttrHash = utils.ResourceAttributeHashPrefix + utils.GetMD5OfMap(resourceAttrMap)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
 			scopeAttrMap := map[string]interface{}{}
+			var scopeAttrHash string
 			if scopeSpans.Scope != nil {
 				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
+				scopeAttrHash = utils.ScopeAttributeHashPrefix + utils.GetMD5OfMap(scopeAttrMap)
 			}
 			for _, span := range scopeSpans.Spans {
 				processedSpanCount++
@@ -151,8 +155,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				/* Populate attributes */
 				if th.otlpConfig.SetSpanAttributes {
 					spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
-					spanDetails.ScopeAttributes = model.GenericMapPtrFromMap(scopeAttrMap)
-					spanDetails.ResourceAttributes = model.GenericMapPtrFromMap(resourceAttrMap)
+					spanDetails.ScopeAttributesHash = scopeAttrHash
+					spanDetails.ResourceAttributesHash = resourceAttrHash
 				}
 
 				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
@@ -178,8 +182,15 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
-				th.addToTraceStore(key, spanDetails)
+				enrichedRawSpan := model.OtelEnrichedRawSpan{
+					Span:                   span,
+					ResourceAttributesHash: resourceAttrHash,
+					ScopeAttributesHash:    scopeAttrHash,
+					WorkloadIdList:         workloadIds,
+					GroupBy:                groupBy,
+				}
 
+				th.addToTraceStore(key, enrichedRawSpan)
 				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
@@ -259,7 +270,7 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 	}
 }
 
-func (th *TraceHandler) addToTraceStore(key string, spanDetails model.OTelSpanDetails) {
+func (th *TraceHandler) addToTraceStore(key string, spanDetails model.OtelEnrichedRawSpan) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
 	th.traceStore.Store(key, spanDetails)
