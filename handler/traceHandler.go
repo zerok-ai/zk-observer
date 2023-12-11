@@ -11,8 +11,6 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
-	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
-	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"io"
@@ -124,7 +122,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		if len(schemaUrl) == 0 {
 			schemaUrl = DefaultNodeJsSchemaUrl
 		}
-		schemaVersion := utils.GetSchemaVersion(schemaUrl)
+
+		// todo: check if schemaVersion is requried, commenting for now
+		//schemaVersion := utils.GetSchemaVersion(schemaUrl)
 		resourceAttrMap := map[string]interface{}{}
 		var resourceAttrHash string
 		if resourceSpan.Resource != nil {
@@ -148,50 +148,19 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					continue
 				}
 
-				spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
-				spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
-				spanDetails.SchemaVersion = schemaVersion
-
-				/* Populate attributes */
-				if th.otlpConfig.SetSpanAttributes {
-					spanDetails.SpanAttributes = model.GenericMapPtrFromMap(spanAttrMap)
-					spanDetails.ScopeAttributesHash = scopeAttrHash
-					spanDetails.ResourceAttributesHash = resourceAttrHash
-				}
-
-				spanDetailsMap := utils.SpanDetailToInterfaceMap(spanDetails)
-
-				/* Detect Span protocol */
-				executorAttrStore := th.factory.GetExecutorAttrStore()
-				podDetailsStore := th.factory.GetPodDetailsStore()
-				protocolIdentifierStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, ExecutorModel.ProtocolIdentifier)
-				identifierProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &protocolIdentifierStoreKey)
-				spanDetails.Protocol = identifierProtocolUtil.DetectSpanProtocol()
-
-				/* Populate Span protocol attributes */
-				executorProtocol := utils.GetExecutorProtocolFromSpanProtocol(spanDetails.Protocol)
-				attrStoreKey, _ := cache.CreateKey(ExecutorModel.ExecutorOTel, spanDetails.SchemaVersion, executorProtocol)
-				spanProtocolUtil := utils.NewSpanProtocolUtil(&spanDetails, &spanDetailsMap, executorAttrStore, podDetailsStore, &attrStoreKey)
-				spanProtocolUtil.AddSpanProtocolProperties()
-
-				logger.Debug(traceLogTag, "Performing span filtering on span ", spanId)
-				//TODO: Make this Async.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetails, spanDetailsMap, resourceAttrMap, spanAttrMap)
-				spanDetails.WorkloadIdList = workloadIds
-				spanDetails.GroupBy = groupBy
-
 				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
 				enrichedRawSpan := model.OtelEnrichedRawSpan{
 					Span:                   span,
 					ResourceAttributesHash: resourceAttrHash,
 					ScopeAttributesHash:    scopeAttrHash,
-					WorkloadIdList:         workloadIds,
-					GroupBy:                groupBy,
+					//WorkloadIdList:         workloadIds,
+					//GroupBy:                groupBy,
 				}
 
 				th.addToTraceStore(key, enrichedRawSpan)
-				err := th.resourceDetailsHandler.SyncResourceData(&spanDetails, resourceAttrMap)
+				//TODO: remove nil and pass correct value
+				err := th.resourceDetailsHandler.SyncResourceData(nil, resourceAttrMap)
 				if err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 				}
