@@ -199,8 +199,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
 					resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
 
+					span.Attributes = nil
 					enrichedRawSpan := model.OtelEnrichedRawSpan{
 						Span:                   span,
+						SpanAttributes:         spanAttributes,
 						ResourceAttributesHash: resourceAttrHash,
 						ScopeAttributesHash:    scopeAttrHash,
 						WorkloadIdList:         workloadIds,
@@ -394,31 +396,6 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 			// Returning false to stop the iteration
 			return false
 		}
-
-		// DEBUG CODE STARTS
-		var spanDetailsMapR map[string]string
-		err = json.Unmarshal([]byte(string(spanJSON)), &spanDetailsMapR)
-		if err != nil {
-			logger.Error("Error retrieving span:", err)
-		}
-
-		spanProtoStrR := spanDetailsMapR["span_proto"]
-		spanMetadataStrR := spanDetailsMapR["span_metadata"]
-
-		var span tracev1.Span
-		err = proto.Unmarshal([]byte(spanProtoStrR), &span)
-		if err != nil {
-			logger.Error("Error retrieving span:", err)
-		}
-
-		var sp model.OtelEnrichedRawSpan
-		err = json.Unmarshal([]byte(spanMetadataStrR), &sp)
-		if err != nil {
-			logger.Error("Error retrieving span:", err)
-		}
-
-		sp.Span = &span
-		// DEBUG CODE ENDS
 
 		keysToDelete = append(keysToDelete, keyStr)
 		return true
