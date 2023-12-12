@@ -3,7 +3,7 @@ package model
 import v1 "go.opentelemetry.io/proto/otlp/trace/v1"
 
 type OtelEnrichedRawSpan struct {
-	Span *v1.Span `json:"-"`
+	Span *v1.Span `json:"span"`
 
 	// Span Attributes
 	SpanAttributes         map[string]interface{} `json:"span_attributes,omitempty"`
