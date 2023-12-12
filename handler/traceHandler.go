@@ -190,6 +190,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					spanJSON[common.OTelSpanAttrKey] = spanAttributes
 					spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
 					spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
+					spanJSON[common.OTelSchemaVersionKey] = schemaVersion
 					// Evaluating and storing data in Otel span format.
 					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 

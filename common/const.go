@@ -7,10 +7,11 @@ const (
 
 	OTelResourceServiceName = "service.name"
 
-	OTelLatencyNsKey    = "latency_ns"
-	OTelSpanAttrKey     = "attributes"
-	OTelResourceAttrKey = "resource_attributes"
-	OTelScopeAttrKey    = "scope_attributes"
+	OTelLatencyNsKey     = "latency_ns"
+	OTelSpanAttrKey      = "attributes"
+	OTelResourceAttrKey  = "resource_attributes"
+	OTelScopeAttrKey     = "scope_attributes"
+	OTelSchemaVersionKey = "schema_version"
 
 	OTelResourceAttrNamespaceKey      = "k8s.namespace.name"
 	OTelResourceAttrDeploymentNameKey = "k8s.deployment.name"
