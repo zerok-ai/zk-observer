@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -365,7 +366,23 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		spanJSON, err := json.Marshal(value)
+		spanDetails := value.(model.OtelEnrichedRawSpan)
+		spanProtoStr, err := proto.Marshal(spanDetails.Span)
+		if err != nil {
+			fmt.Println("Error marshalling:", err)
+		}
+
+		spanMetadataStr, _ := json.Marshal(spanDetails)
+		if err != nil {
+			fmt.Println("Error marshalling:", err)
+		}
+
+		spanDetailsMap := map[string]interface{}{
+			"span_proto":    string(spanProtoStr),
+			"span_metadata": string(spanMetadataStr),
+		}
+
+		spanJSON, err := json.Marshal(spanDetailsMap)
 		if err != nil {
 			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
 			return true
