@@ -377,7 +377,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 			fmt.Println("Error marshalling:", err)
 		}
 
-		spanDetailsMap := map[string]interface{}{
+		spanDetailsMap := map[string]string{
 			"span_proto":    string(spanProtoStr),
 			"span_metadata": string(spanMetadataStr),
 		}
