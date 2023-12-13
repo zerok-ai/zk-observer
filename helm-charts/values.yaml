@@ -19,5 +19,6 @@ ports:
 - port: 80
   protocol: TCP
   targetPort: 8147
+  nodePort: 31600
 
-type: ClusterIP
+type: NodePort

@@ -67,7 +67,7 @@ func main() {
 		LogLevel:              otlpConfig.Logs.Level,
 	})
 
-	app.Get("/health", func(ctx iris.Context) {
+	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)
 	})
 
