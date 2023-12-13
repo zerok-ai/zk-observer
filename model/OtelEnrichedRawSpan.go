@@ -2,6 +2,18 @@ package model
 
 import v1 "go.opentelemetry.io/proto/otlp/trace/v1"
 
+type ScopeInfo struct {
+	Name          string     `json:"name"`
+	Version       string     `json:"version"`
+	AttributesMap GenericMap `json:"attributes_map"`
+	SchemaUrl     string     `json:"schema_url"`
+}
+
+type ResourceInfo struct {
+	AttributesMap GenericMap `json:"attributes_map"`
+	SchemaUrl     string     `json:"schema_url"`
+}
+
 type OtelEnrichedRawSpan struct {
 	Span *v1.Span `json:"span"`
 

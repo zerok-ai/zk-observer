@@ -136,11 +136,13 @@ func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) []model.Generi
 			eventMap := utils.ObjectToInterfaceMap(event)
 			if event.Name == common.OTelSpanEventException {
 				hash := th.processOTelSpanException(hex.EncodeToString(span.SpanId), event)
+				// override attributes with nil as data is saved to other db
 				eventMap[common.OTelSpanEventAttrKey] = nil
 				eventMap[common.OTelSpanEventExceptionHashKey] = hash
 				spanEventsList = append(spanEventsList, eventMap)
 			} else {
 				eventAttributes := utils.ConvertKVListToMap(event.Attributes)
+				// override attributes with event attributes hashmap
 				eventMap[common.OTelSpanEventAttrKey] = eventAttributes
 				spanEventsList = append(spanEventsList, eventMap)
 			}
@@ -171,20 +173,42 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		}
 
 		schemaVersion := utils.GetSchemaVersion(schemaUrl)
-		resourceAttrMap := map[string]interface{}{}
+		resourceInfo := model.ResourceInfo{
+			SchemaUrl: schemaUrl,
+		}
+
+		resourceInfo.AttributesMap = map[string]interface{}{}
 		var resourceAttrHash string
+		var resourceAttrMap map[string]interface{}
+		var resourceInfoMap map[string]interface{}
 		if resourceSpan.Resource != nil {
+			resourceInfoMap = utils.ObjectToInterfaceMap(resourceInfo)
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
-			resourceAttrHash = utils.ResourceAttributeHashPrefix + utils.GetMD5OfMap(resourceAttrMap)
+			resourceInfoMap["attributes"] = resourceAttrMap
+			resourceAttrHash = utils.ResourceAttributeHashPrefix + utils.GetMD5OfMap(resourceInfoMap)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
-			scopeAttrMap := map[string]interface{}{}
-			var scopeAttrHash string
-			if scopeSpans.Scope != nil {
-				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
-				scopeAttrHash = utils.ScopeAttributeHashPrefix + utils.GetMD5OfMap(scopeAttrMap)
+			scopeInfo := model.ScopeInfo{
+				Name:      scopeSpans.Scope.Name,
+				Version:   scopeSpans.Scope.Version,
+				SchemaUrl: scopeSpans.SchemaUrl,
 			}
+			scopeInfo.AttributesMap = map[string]interface{}{}
+
+			var scopeAttrHash string
+			var scopeInfoMap map[string]interface{}
+			var scopeAttrMap map[string]interface{}
+			if scopeSpans.Scope != nil {
+				scopeInfoMap = utils.ObjectToInterfaceMap(scopeInfo)
+				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
+				scopeInfoMap["attributes"] = scopeAttrMap
+				scopeAttrHash = utils.ScopeAttributeHashPrefix + utils.GetMD5OfMap(scopeInfoMap)
+			}
+
 			for _, span := range scopeSpans.Spans {
+				//TODO: remove this later
+				span.Links = nil
+
 				processedSpanCount++
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
@@ -246,11 +270,11 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
 				}
 
-				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceAttrMap); err != nil {
+				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceInfoMap); err != nil {
 					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error is ", err)
 				}
 
-				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeAttrMap); err != nil {
+				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeInfoMap); err != nil {
 					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error is ", err)
 				}
 
