@@ -6,9 +6,10 @@ type OtelEnrichedRawSpan struct {
 	Span *v1.Span `json:"span"`
 
 	// Span Attributes
-	SpanAttributes         map[string]interface{} `json:"span_attributes,omitempty"`
-	ResourceAttributesHash string                 `json:"resource_attributes_hash,omitempty"`
-	ScopeAttributesHash    string                 `json:"scope_attributes_hash,omitempty"`
+	SpanAttributes         GenericMap   `json:"span_attributes,omitempty"`
+	SpanEvents             []GenericMap `json:"span_events,omitempty"`
+	ResourceAttributesHash string       `json:"resource_attributes_hash,omitempty"`
+	ScopeAttributesHash    string       `json:"scope_attributes_hash,omitempty"`
 
 	// ZeroK Properties
 	WorkloadIdList []string   `json:"workload_id_list,omitempty"`

@@ -129,6 +129,35 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.resourceAndScoperAttrHandler.SyncPipeline()
 }
 
+func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) []model.GenericMap {
+	var spanEventsList []model.GenericMap
+	if len(span.Events) > 0 {
+		for _, event := range span.Events {
+			eventMap := utils.ObjectToInterfaceMap(event)
+			if event.Name == common.OTelSpanEventException {
+				hash := th.processOTelSpanException(hex.EncodeToString(span.SpanId), event)
+				eventMap[common.OTelSpanEventAttrKey] = nil
+				eventMap[common.OTelSpanEventExceptionHashKey] = hash
+				spanEventsList = append(spanEventsList, eventMap)
+			} else {
+				eventAttributes := utils.ConvertKVListToMap(event.Attributes)
+				eventMap[common.OTelSpanEventAttrKey] = eventAttributes
+				spanEventsList = append(spanEventsList, eventMap)
+			}
+		}
+	}
+	return spanEventsList
+}
+
+func (th *TraceHandler) processOTelSpanException(spanIdStr string, event *tracev1.Span_Event) string {
+	exceptionDetails := redis.CreateExceptionDetails(event)
+	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
+	}
+	return hash
+}
+
 func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans) {
 	var processedSpanCount = 0
 	if len(resourceSpans) == 0 {
@@ -191,6 +220,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
 					spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
 					spanJSON[common.OTelSchemaVersionKey] = schemaVersion
+					spanEvents := th.processOTelSpanEvents(span)
+					spanJSON[common.OTelSpanEventsKey] = spanEvents
 					// Evaluating and storing data in Otel span format.
 					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 
@@ -199,8 +230,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
 
 					span.Attributes = nil
+					span.Events = nil
 					enrichedRawSpan := model.OtelEnrichedRawSpan{
 						Span:                   span,
+						SpanEvents:             spanEvents,
 						SpanAttributes:         spanAttributes,
 						ResourceAttributesHash: resourceAttrHash,
 						ScopeAttributesHash:    scopeAttrHash,
