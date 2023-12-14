@@ -13,6 +13,7 @@ const (
 	OTelScopeAttrKey     = "scope_attributes"
 	OTelSchemaVersionKey = "schema_version"
 	OTelSpanEventsKey    = "events"
+	OTelSpanErrorKey     = "error"
 
 	OTelSpanEventAttrKey          = "attributes"
 	OTelSpanEventExceptionHashKey = "exception_hash"

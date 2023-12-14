@@ -129,8 +129,9 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.resourceAndScoperAttrHandler.SyncPipeline()
 }
 
-func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) []model.GenericMap {
+func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]model.GenericMap, bool) {
 	var spanEventsList []model.GenericMap
+	var errorFlag bool
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
 			eventMap := utils.ObjectToInterfaceMap(event)
@@ -139,6 +140,7 @@ func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) []model.Generi
 				// override attributes with nil as data is saved to other db
 				eventMap[common.OTelSpanEventAttrKey] = nil
 				eventMap[common.OTelSpanEventExceptionHashKey] = hash
+				errorFlag = true
 				spanEventsList = append(spanEventsList, eventMap)
 			} else {
 				eventAttributes := utils.ConvertKVListToMap(event.Attributes)
@@ -148,7 +150,7 @@ func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) []model.Generi
 			}
 		}
 	}
-	return spanEventsList
+	return spanEventsList, errorFlag
 }
 
 func (th *TraceHandler) processOTelSpanException(spanIdStr string, event *tracev1.Span_Event) string {
@@ -244,8 +246,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
 					spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
 					spanJSON[common.OTelSchemaVersionKey] = schemaVersion
-					spanEvents := th.processOTelSpanEvents(span)
+					spanEvents, errorFlag := th.processOTelSpanEvents(span)
 					spanJSON[common.OTelSpanEventsKey] = spanEvents
+					spanJSON[common.OTelSpanErrorKey] = errorFlag
 					// Evaluating and storing data in Otel span format.
 					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 
