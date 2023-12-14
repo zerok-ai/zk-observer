@@ -184,7 +184,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		if resourceSpan.Resource != nil {
 			resourceInfoMap = utils.ObjectToInterfaceMap(resourceInfo)
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
-			resourceInfoMap["attributes"] = resourceAttrMap
+			resourceInfoMap["attributes_map"] = resourceAttrMap
 			resourceAttrHash = utils.ResourceAttributeHashPrefix + utils.GetMD5OfMap(resourceInfoMap)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
@@ -201,7 +201,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			if scopeSpans.Scope != nil {
 				scopeInfoMap = utils.ObjectToInterfaceMap(scopeInfo)
 				scopeAttrMap = utils.ConvertKVListToMap(scopeSpans.Scope.Attributes)
-				scopeInfoMap["attributes"] = scopeAttrMap
+				scopeInfoMap["attributes_map"] = scopeAttrMap
 				scopeAttrHash = utils.ScopeAttributeHashPrefix + utils.GetMD5OfMap(scopeInfoMap)
 			}
 
