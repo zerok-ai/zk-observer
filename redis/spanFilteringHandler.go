@@ -16,6 +16,7 @@ import (
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -147,13 +148,22 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 		return false
 	}
+
+	workloadServiceName := workload.Service
+	// if workloadServiceName contains "/" then it is a otel service name, else evaluate as k8s namespace/workload name
+	if !strings.Contains(workloadServiceName, "/") {
+		return h.isSpanToBeEvaluatedForOTelService(workload, spanDetailsMap)
+	} else {
+		return h.isSpanToBeEvaluatedForK8sWorkload(workload, spanDetailsMap)
+	}
+}
+
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
 	scenarioWorkloadNs, scenarioWorkloadDeplName, err := workload.GetNamespaceAndWorkloadName()
 	if err != nil {
 		logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload service: ", workload.Service, " error: ", err)
 		return false
 	}
-
-	// TODO: Check for service name in otel span instead of namespace & deployment name.
 
 	resourceAttributes, ok := spanDetailsMap[common.OTelResourceAttrKey]
 	if !ok || resourceAttributes == nil {
@@ -186,7 +196,29 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
 		return false
 	}
+	return true
+}
 
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
+	workloadServiceName := workload.Service
+	spanAttributes, ok := spanDetailsMap[common.OTelSpanAttrKey]
+	if !ok || spanAttributes == nil {
+		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
+		return true
+	}
+	spanAttrMap := spanAttributes.(map[string]interface{})
+	spanServiceName, nsOk := spanAttrMap[common.OTelSpanAttrServiceNameKey]
+	if !nsOk || spanServiceName == "" {
+		logger.Warn(spanFilteringLogTag, "Service Name not found in resourceAttrMap, using service name='*'. "+
+			"Please set OTEL_SERVICE_NAME or `service.name` key in OTEL_RESOURCE_ATTRIBUTES env variable.")
+		spanServiceName = common.ScenarioWorkloadGenericServiceNameKey
+	}
+
+	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
+		logger.Debug(spanFilteringLogTag, "NS::spanAttrMap: ", spanServiceName, "scenarioWorkload: ", workloadServiceName)
+		logger.Info(spanFilteringLogTag, "OTel service name is not matching")
+		return false
+	}
 	return true
 }
 

@@ -17,11 +17,13 @@ const (
 	OTelSpanEventAttrKey          = "attributes"
 	OTelSpanEventExceptionHashKey = "exception_hash"
 
+	OTelSpanAttrServiceNameKey        = "service.name"
 	OTelResourceAttrNamespaceKey      = "k8s.namespace.name"
 	OTelResourceAttrDeploymentNameKey = "k8s.deployment.name"
 
-	ScenarioWorkloadGenericNamespaceKey  = "*"
-	ScenarioWorkloadGenericDeploymentKey = "*"
+	ScenarioWorkloadGenericServiceNameKey = "*"
+	ScenarioWorkloadGenericNamespaceKey   = "*"
+	ScenarioWorkloadGenericDeploymentKey  = "*"
 
 	DefaultSchemaVersion = "1.7.0"
 )
