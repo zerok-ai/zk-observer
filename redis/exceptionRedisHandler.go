@@ -65,21 +65,6 @@ func (h *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDeta
 	return hash, nil
 }
 
-func (h *ExceptionRedisHandler) GetExceptionDetails(hash string) *model.ExceptionDetails {
-	exceptionDetails := model.ExceptionDetails{}
-	exceptionDetailsJSON, err := h.redisHandler.Get(hash)
-	if err != nil {
-		logger.Error(exceptionLogTag, "Error while getting exception details for hash %s: %v\n", hash, err)
-		return nil
-	}
-	err = json.Unmarshal([]byte(exceptionDetailsJSON), &exceptionDetails)
-	if err != nil {
-		logger.Error(exceptionLogTag, "Error while unmarshalling exception details for hash %s: %v\n", hash, err)
-		return nil
-	}
-	return &exceptionDetails
-}
-
 func CreateExceptionDetails(event *tracev1.Span_Event) *model.ExceptionDetails {
 	exceptionAttr := event.Attributes
 	exception := model.ExceptionDetails{}
