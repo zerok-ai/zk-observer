@@ -67,6 +67,10 @@ func main() {
 		LogLevel:              otlpConfig.Logs.Level,
 	})
 
+	app.Get("/health", func(ctx iris.Context) {
+		ctx.StatusCode(iris.StatusOK)
+	})
+
 	app.Post("/v1/traces", traceHandler.ServeHTTP)
 
 	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
