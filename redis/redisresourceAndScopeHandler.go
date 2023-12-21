@@ -7,6 +7,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"sync"
+	"time"
 )
 
 type ResourceAndScopeAttributesHandler struct {
@@ -48,7 +49,8 @@ func (h *ResourceAndScopeAttributesHandler) SyncResourceAndScopeAttrData(key str
 
 	_, ok := h.existingResourceData.Load(key)
 	if !ok {
-		err = h.redisHandler.Set(key, attrStr)
+		expiry := time.Duration(h.otlpConfig.Traces.Ttl) * time.Second
+		err = h.redisHandler.Set(key, attrStr, expiry)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)
 			return err

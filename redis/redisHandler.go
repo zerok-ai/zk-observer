@@ -71,8 +71,8 @@ func (h *RedisHandler) InitializeRedisConn() error {
 	return nil
 }
 
-func (h *RedisHandler) Set(key string, value interface{}) error {
-	statusCmd := h.RedisClient.Set(h.ctx, key, value, 0)
+func (h *RedisHandler) Set(key string, value interface{}, ttl time.Duration) error {
+	statusCmd := h.RedisClient.Set(h.ctx, key, value, ttl)
 	return statusCmd.Err()
 }
 
