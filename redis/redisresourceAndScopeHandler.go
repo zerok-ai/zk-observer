@@ -49,7 +49,7 @@ func (h *ResourceAndScopeAttributesHandler) SyncResourceAndScopeAttrData(key str
 
 	_, ok := h.existingResourceData.Load(key)
 	if !ok {
-		expiry := time.Duration(h.otlpConfig.Traces.Ttl) * time.Second
+		expiry := time.Duration(h.otlpConfig.Resources.Ttl) * time.Second
 		err = h.redisHandler.Set(key, attrStr, expiry)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)

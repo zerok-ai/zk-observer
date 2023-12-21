@@ -37,6 +37,8 @@ data:
     exception:
       syncDuration: 30
       batchSize: 30
+      ttl: 3600
     resources:
       syncDuration: 30
       batchSize: 30
+      ttl: 3600

@@ -10,6 +10,7 @@ import (
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"sync"
+	"time"
 )
 
 var exceptionLogTag = "ExceptionRedisHandler"
@@ -51,7 +52,8 @@ func (h *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDeta
 				return "", err
 			}
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err = h.redisHandler.SetNXPipeline(hash, exceptionJSON, 0)
+			expiry := time.Duration(h.otlpConfig.Exception.Ttl) * time.Second
+			err = h.redisHandler.SetNXPipeline(hash, exceptionJSON, expiry)
 			if err != nil {
 				logger.Error(exceptionLogTag, "Error while setting exception details for spanID %s: %v\n", spanId, err)
 				return "", err

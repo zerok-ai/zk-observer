@@ -11,11 +11,13 @@ import (
 type ExceptionConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 	BatchSize    int `yaml:"batchSize"`
+	Ttl          int `yaml:"ttl"`
 }
 
 type ResourceConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 	BatchSize    int `yaml:"batchSize"`
+	Ttl          int `yaml:"ttl"`
 }
 
 type TraceConfig struct {
