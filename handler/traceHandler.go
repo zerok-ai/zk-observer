@@ -8,7 +8,8 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/redis"
+	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
+	redis2 "github.com/zerok-ai/zk-otlp-receiver/stores/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
@@ -34,36 +35,43 @@ type SpanForStorage interface {
 type TraceHandler struct {
 	traceStore                   sync.Map
 	traceStoreMutex              sync.Mutex
-	traceRedisHandler            *redis.TraceRedisHandler
-	exceptionHandler             *redis.ExceptionRedisHandler
-	resourceDetailsHandler       *redis.ResourceRedisHandler
-	resourceAndScoperAttrHandler *redis.ResourceAndScopeAttributesHandler
+	traceRedisHandler            *redis2.TraceRedisHandler
+	traceBadgerHandler           *badger.TraceBadgerHandler
+	exceptionHandler             *redis2.ExceptionRedisHandler
+	resourceDetailsHandler       *redis2.ResourceRedisHandler
+	resourceAndScoperAttrHandler *redis2.ResourceAndScopeAttributesHandler
 	otlpConfig                   *config.OtlpConfig
-	spanFilteringHandler         *redis.SpanFilteringHandler
+	spanFilteringHandler         *redis2.SpanFilteringHandler
 	factory                      stores.StoreFactory
 }
 
 func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
 	handler := TraceHandler{}
-	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
+	traceRedisHandler, err := redis2.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
 	}
 
-	resourceAndScopeAttrRedisHandler, err := redis.NewResourceAndScopeAttributesHandler(config)
+	traceBadgerHandler, err := badger.NewTracesBadgerHandler(config)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while creating badger handler:", err)
+		return nil, err
+	}
+
+	resourceAndScopeAttrRedisHandler, err := redis2.NewResourceAndScopeAttributesHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
 	}
 
-	exceptionHandler, err := redis.NewExceptionHandler(config)
+	exceptionHandler, err := redis2.NewExceptionHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating exception handler:", err)
 		return nil, err
 	}
 
-	resourceHandler, err := redis.NewResourceDetailsHandler(config)
+	resourceHandler, err := redis2.NewResourceDetailsHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating resource details handler:", err)
 		return nil, err
@@ -76,10 +84,11 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*T
 	handler.exceptionHandler = exceptionHandler
 	handler.traceStore = sync.Map{}
 	handler.traceRedisHandler = traceRedisHandler
+	handler.traceBadgerHandler = traceBadgerHandler
 	handler.otlpConfig = config
 	handler.factory = factory
 	handler.resourceAndScoperAttrHandler = resourceAndScopeAttrRedisHandler
-	spanFilteringHandler, err := redis.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore)
+	spanFilteringHandler, err := redis2.NewSpanFilteringHandler(config, executorAttrStore, podDetailsStore)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating span filtering handler:", err)
 		return nil, err
@@ -123,6 +132,7 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.deleteFromTraceStore(keysToDelete)
 
 	th.traceRedisHandler.SyncPipeline()
+	th.traceBadgerHandler.SyncPipeline()
 	th.exceptionHandler.SyncPipeline()
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
@@ -154,7 +164,7 @@ func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]model.Gener
 }
 
 func (th *TraceHandler) processOTelSpanException(spanIdStr string, event *tracev1.Span_Event) string {
-	exceptionDetails := redis.CreateExceptionDetails(event)
+	exceptionDetails := redis2.CreateExceptionDetails(event)
 	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
@@ -372,7 +382,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 }
 
 func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev1.Span_Event) model.SpanErrorInfo {
-	exceptionDetails := redis.CreateExceptionDetails(event)
+	exceptionDetails := redis2.CreateExceptionDetails(event)
 	spanIdStr := hex.EncodeToString(span.SpanId)
 	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 	if err != nil {
@@ -433,9 +443,16 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 			return true
 		}
 
-		err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
+		//err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
+		//if err != nil {
+		//	logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
+		//	// Returning false to stop the iteration
+		//	return false
+		//}
+
+		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
 		if err != nil {
-			logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
+			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
 			// Returning false to stop the iteration
 			return false
 		}

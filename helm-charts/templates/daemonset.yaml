@@ -40,7 +40,12 @@ spec:
         volumeMounts:
         - mountPath: /zk/config
           name: otlp-config
+        - mountPath: /zk/badger-db
+          name: badger-data
       volumes:
       - configMap:
           name: zk-otlp-receiver
         name: otlp-config
+      - name: badger-data
+        persistentVolumeClaim:
+          claimName: zerok-badger-pvc
