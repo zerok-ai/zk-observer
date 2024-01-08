@@ -44,5 +44,5 @@ func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanJSO
 }
 
 func (h *TraceBadgerHandler) SyncPipeline() {
-	h.badgerHandler.StartCompaction()
+	//h.badgerHandler.StartCompaction()
 }
