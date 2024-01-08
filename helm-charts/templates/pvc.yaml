@@ -6,7 +6,6 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: ""
-  volumeName: zerok-badger-pv
   resources:
     requests:
       storage: 1Gi
