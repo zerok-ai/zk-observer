@@ -34,11 +34,12 @@ func NewTracesBadgerHandler(otlpConfig *config.OtlpConfig) (*TraceBadgerHandler,
 
 func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanJSON string) error {
 	key := traceId + "-" + spanId
-	logger.Error(traceBadgerHandlerLogTag, "Setting %s: %v\n", key, spanJSON)
+	logger.InfoF(traceBadgerHandlerLogTag, "Setting %s as %s", key, spanJSON)
 	if err := h.badgerHandler.Set(key, spanJSON, int64(time.Duration(h.config.Traces.Ttl)*time.Second)); err != nil {
-		logger.Error(traceBadgerHandlerLogTag, "Error while setting trace details for traceId %s: %v\n", traceId, err)
+		logger.ErrorF(traceBadgerHandlerLogTag, "Error while setting trace details for traceId %s: %v", traceId, err)
 		return err
 	}
+	logger.InfoF(traceBadgerHandlerLogTag, "Value at %s successfully set.", key)
 	return nil
 }
 
