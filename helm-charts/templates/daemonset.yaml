@@ -49,3 +49,4 @@ spec:
       - name: badger-data
         persistentVolumeClaim:
           claimName: zerok-badger-pvc
+          readOnly: false
