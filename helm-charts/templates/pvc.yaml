@@ -1,9 +1,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: zerok-badger-pvc1
+  name: zerok-badger-pvc
 spec:
-  volumeName: zerok-badger-pv1
   accessModes:
     - ReadWriteMany
   resources:
