@@ -5,7 +5,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: standard-rwo
+  storageClassName: ""
+  volumeName: zerok-badger-pv
   resources:
     requests:
       storage: 1Gi
