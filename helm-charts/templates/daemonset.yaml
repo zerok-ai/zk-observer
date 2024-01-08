@@ -48,4 +48,4 @@ spec:
         name: otlp-config
       - name: badger-data
         persistentVolumeClaim:
-          claimName: zerok-badger-pvc
+          claimName: zerok-badger-pvc1
