@@ -2,8 +2,6 @@ module github.com/zerok-ai/zk-otlp-receiver
 
 go 1.21
 
-toolchain go1.21.5
-
 require (
 	github.com/golang/protobuf v1.5.3
 	github.com/ilyakaznacheev/cleanenv v1.5.0
