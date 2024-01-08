@@ -21,7 +21,6 @@ env:
   DOCKER_REG: ${{ vars.DOCKER_REG }}
   DOCKER_REPO: ${{ vars.DOCKER_REPO }}
   APP_NAME: ${{ vars.APP_NAME }}
-  TEST_NAMESPACE: ${{ vars.TEST_NAMESPACE }}
 jobs:
   init:
     uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@main
@@ -65,7 +64,7 @@ jobs:
       MIGRATION_VERSION: ${{ needs.init.outputs.VERSION }}
       PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
       ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
-      NAMESPACE_VAR: ${{ vars.TEST_NAMESPACE }}
+      NAMESPACE_VAR: TEST_NAMESPACE
     secrets:
       GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
     needs: [init,build-push]
