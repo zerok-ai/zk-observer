@@ -21,6 +21,7 @@ env:
   DOCKER_REG: ${{ vars.DOCKER_REG }}
   DOCKER_REPO: ${{ vars.DOCKER_REPO }}
   APP_NAME: ${{ vars.APP_NAME }}
+  TEST_NAMESPACE: ${{ vars.TEST_NAMESPACE }}
 jobs:
   init:
     uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@main
