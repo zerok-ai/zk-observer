@@ -1,15 +1,15 @@
 package model
 
-import "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+import zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 
 type ScopeInfo struct {
-	Name          string                  `json:"name"`
-	Version       string                  `json:"version"`
-	AttributesMap enrichedSpan.GenericMap `json:"attributes_map"`
-	SchemaUrl     string                  `json:"schema_url"`
+	Name          string                        `json:"name"`
+	Version       string                        `json:"version"`
+	AttributesMap zkUtilsCommonModel.GenericMap `json:"attributes_map"`
+	SchemaUrl     string                        `json:"schema_url"`
 }
 
 type ResourceInfo struct {
-	AttributesMap enrichedSpan.GenericMap `json:"attributes_map"`
-	SchemaUrl     string                  `json:"schema_url"`
+	AttributesMap zkUtilsCommonModel.GenericMap `json:"attributes_map"`
+	SchemaUrl     string                        `json:"schema_url"`
 }

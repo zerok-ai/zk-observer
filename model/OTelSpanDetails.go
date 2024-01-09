@@ -2,11 +2,11 @@ package model
 
 import (
 	"github.com/zerok-ai/zk-otlp-receiver/common"
-	"github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 )
 
-func GenericMapPtrFromMap(inputMap map[string]interface{}) *enrichedSpan.GenericMap {
-	genericMap := enrichedSpan.GenericMap(inputMap)
+func GenericMapPtrFromMap(inputMap map[string]interface{}) *zkUtilsCommonModel.GenericMap {
+	genericMap := zkUtilsCommonModel.GenericMap(inputMap)
 	return &genericMap
 }
 
@@ -20,9 +20,9 @@ type OTelSpanDetails struct {
 	Errors        []SpanErrorInfo `json:"errors,omitempty"`
 
 	// Span Attributes
-	SpanAttributes     *enrichedSpan.GenericMap `json:"attributes,omitempty"`
-	ResourceAttributes *enrichedSpan.GenericMap `json:"resource_attributes,omitempty"`
-	ScopeAttributes    *enrichedSpan.GenericMap `json:"scope_attributes,omitempty"`
+	SpanAttributes     *zkUtilsCommonModel.GenericMap `json:"attributes,omitempty"`
+	ResourceAttributes *zkUtilsCommonModel.GenericMap `json:"resource_attributes,omitempty"`
+	ScopeAttributes    *zkUtilsCommonModel.GenericMap `json:"scope_attributes,omitempty"`
 
 	ResourceAttributesHash string `json:"resource_attributes_hash,omitempty"`
 	ScopeAttributesHash    string `json:"scope_attributes_hash,omitempty"`
@@ -49,8 +49,8 @@ type OTelSpanDetails struct {
 	Username *string  `json:"username,omitempty"`
 
 	// ZeroK Properties
-	WorkloadIdList []string                `json:"workload_id_list,omitempty"`
-	GroupBy        enrichedSpan.GroupByMap `json:"group_by,omitempty"`
+	WorkloadIdList []string                      `json:"workload_id_list,omitempty"`
+	GroupBy        zkUtilsCommonModel.GroupByMap `json:"group_by,omitempty"`
 }
 
 type SpanErrorInfo struct {

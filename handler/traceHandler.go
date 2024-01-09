@@ -9,10 +9,12 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/redis"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	_ "github.com/zerok-ai/zk-utils-go/common"
+	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
-	"github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
-	protoEnrichedRawSpan "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
+	zkUtilsEnrichedSpan "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	zkUtilsProtoEnrichedRawSpan "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -29,7 +31,7 @@ var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
 var EvaluateZeroKSpan = true
 
 type SpanForStorage interface {
-	enrichedSpan.OtelEnrichedRawSpan | model.OTelSpanDetails
+	zkUtilsEnrichedSpan.OtelEnrichedRawSpan | model.OTelSpanDetails
 }
 
 type TraceHandler struct {
@@ -130,8 +132,8 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.resourceAndScoperAttrHandler.SyncPipeline()
 }
 
-func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]enrichedSpan.GenericMap, bool) {
-	var spanEventsList []enrichedSpan.GenericMap
+func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]zkUtilsCommonModel.GenericMap, bool) {
+	var spanEventsList []zkUtilsCommonModel.GenericMap
 	var errorFlag bool
 	if len(span.Events) > 0 {
 		for _, event := range span.Events {
@@ -259,7 +261,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 
 					span.Attributes = nil
 					span.Events = nil
-					enrichedRawSpan := enrichedSpan.OtelEnrichedRawSpan{
+					enrichedRawSpan := zkUtilsEnrichedSpan.OtelEnrichedRawSpan{
 						Span:                   span,
 						SpanEvents:             spanEvents,
 						SpanAttributes:         spanAttributes,
@@ -268,8 +270,9 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 						WorkloadIdList:         workloadIds,
 						GroupBy:                groupBy,
 					}
-					protoEnrichedRawSpan := enrichedRawSpan.GetProtoEnrichedSpan()
-					th.addEnrichedSpanToTraceStore(key, protoEnrichedRawSpan)
+
+					spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
+					th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
 				}
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
@@ -293,7 +296,7 @@ func (th *TraceHandler) EvalAndStoreZkSpan() {
 }
 
 // Generate Span details from the span.
-func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion string, resourceAttrMap enrichedSpan.GenericMap, resourceAttrHash string, scopeAttrMap enrichedSpan.GenericMap, scopeAttrHash string) model.OTelSpanDetails {
+func (th *TraceHandler) generateSpanDetails(span *tracev1.Span, schemaVersion string, resourceAttrMap zkUtilsCommonModel.GenericMap, resourceAttrHash string, scopeAttrMap zkUtilsCommonModel.GenericMap, scopeAttrHash string) model.OTelSpanDetails {
 	spanAttrMap := utils.ConvertKVListToMap(span.Attributes)
 	spanDetails := th.createSpanDetails(span, resourceAttrMap, spanAttrMap)
 	spanDetails.SchemaVersion = schemaVersion
@@ -395,7 +398,7 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 	}
 }
 
-func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *protoEnrichedRawSpan.OtelEnrichedRawSpanForProto) {
+func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkUtilsProtoEnrichedRawSpan.OtelEnrichedRawSpanForProto) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
 	th.traceStore.Store(key, spanDetails)

@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
+	common2 "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -110,38 +113,7 @@ func ConvertToIpv4(ipStr string) string {
 }
 
 func ConvertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
-	attrMap := map[string]interface{}{}
-	for _, kv := range attr {
-		value := GetAnyValue(kv.Value)
-		if value != nil {
-			attrMap[kv.Key] = value
-		}
-	}
-	return attrMap
-}
-
-func GetAnyValue(value *commonv1.AnyValue) interface{} {
-	switch v := value.Value.(type) {
-	case *commonv1.AnyValue_StringValue:
-		return v.StringValue
-	case *commonv1.AnyValue_ArrayValue:
-		var arr []interface{}
-		for _, item := range v.ArrayValue.Values {
-			arr = append(arr, GetAnyValue(item))
-		}
-		return arr
-	case *commonv1.AnyValue_BoolValue:
-		return v.BoolValue
-	case *commonv1.AnyValue_DoubleValue:
-		return v.DoubleValue
-	case *commonv1.AnyValue_BytesValue:
-		return v.BytesValue
-	case *commonv1.AnyValue_IntValue:
-		return v.IntValue
-	default:
-		logger.Debug(spanUtilsLogTag, "Unknown type ", v)
-	}
-	return nil
+	return enrichedSpan.ConvertKVListToMap(common2.ToPtr(zkUtilsOtel.KeyValueList{KeyValueList: attr}))
 }
 
 func GetSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
