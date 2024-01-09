@@ -5,6 +5,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
+	"os"
 	"time"
 )
 
@@ -14,10 +15,12 @@ type TraceRedisHandler struct {
 	redisHandler *RedisHandler
 	ctx          context.Context
 	config       *config.OtlpConfig
+	nodeIP       string
 }
 
 func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, error) {
 	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, clientDBNames.TraceDBName, otlpConfig.Traces.SyncDuration, otlpConfig.Traces.BatchSize, traceRedisHandlerLogTag)
+	nodeIP := os.Getenv("NODE_IP")
 
 	if err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while creating redis client ", err)
@@ -27,6 +30,7 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 		redisHandler: redisHandler,
 		ctx:          context.Background(),
 		config:       otlpConfig,
+		nodeIP:       nodeIP,
 	}
 
 	return handler, nil
@@ -34,6 +38,10 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 
 func (h *TraceRedisHandler) CheckRedisConnection() error {
 	return h.redisHandler.CheckRedisConnection()
+}
+
+func (h *TraceRedisHandler) PutTraceSource(traceId string, spanId string) error {
+	return h.PutTraceData(traceId, spanId, h.nodeIP)
 }
 
 func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanJSON string) error {
