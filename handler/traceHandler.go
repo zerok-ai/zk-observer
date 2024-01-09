@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -13,6 +12,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
 	"github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	protoEnrichedRawSpan "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -268,13 +268,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 						WorkloadIdList:         workloadIds,
 						GroupBy:                groupBy,
 					}
-					protoSpan := enrichedRawSpan.GetProtoEnrichedSpan()
-					spanProtoJSON, err := proto.Marshal(protoSpan)
-					if err != nil {
-						logger.Error(traceLogTag, "Error while marshalling span ", err)
-						continue
-					}
-					th.addEnrichedSpanToTraceStore(key, spanProtoJSON)
+					protoEnrichedRawSpan := enrichedRawSpan.GetProtoEnrichedSpan()
+					th.addEnrichedSpanToTraceStore(key, protoEnrichedRawSpan)
 				}
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
@@ -400,7 +395,7 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 	}
 }
 
-func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails []byte) {
+func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *protoEnrichedRawSpan.OtelEnrichedRawSpanForProto) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
 	th.traceStore.Store(key, spanDetails)
@@ -433,13 +428,13 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		spanJSON, err := json.Marshal(value)
+		spanProto, err := proto.Marshal(value.(proto.Message))
 		if err != nil {
 			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
 			return true
 		}
 
-		err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
+		err = th.traceRedisHandler.PutTraceData(traceIDStr, spanIDStr, spanProto)
 		if err != nil {
 			logger.Debug(traceLogTag, "Error while putting trace data to redis ", err)
 			// Returning false to stop the iteration
