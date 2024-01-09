@@ -144,12 +144,17 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 			return
 		}
 
+		fmt.Println("trace span data requested for list inputList", inputList)
+
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
 		if err2 != nil {
+			ctx.StatusCode(iris.StatusInternalServerError)
 			return
 		}
 
-		ctx.StatusCode(iris.StatusAccepted)
+		fmt.Printf(fmt.Sprint("data from badger : %s", data))
+
+		ctx.StatusCode(iris.StatusOK)
 		err := ctx.JSON(data)
 		if err != nil {
 			logger.ErrorF(mainLogTag, "Unable to fetch data from badger %s", err)
