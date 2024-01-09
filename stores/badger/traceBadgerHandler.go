@@ -2,6 +2,7 @@ package badger
 
 import (
 	"context"
+	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/badger"
@@ -48,10 +49,12 @@ func (h *TraceBadgerHandler) SyncPipeline() {
 }
 
 func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]string, error) {
-	logger.InfoF(traceBadgerHandlerLogTag, "Fetching data form badger for given prefixList: %v", prefixList)
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given tracePrefixList: %v", prefixList))
 	prefix, err := h.badgerHandler.BulkGetForPrefix(prefixList)
 	if err != nil {
+		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given tracePrefixList: %v", prefixList), err)
 		return nil, err
 	}
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", prefix))
 	return prefix, nil
 }

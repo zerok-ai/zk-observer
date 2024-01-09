@@ -26,7 +26,7 @@ data:
     badger:
       badgerPath: /zk/badger-db
       batchSize: 20
-      gcDiscardRatio: 0.01
+      gcDiscardRatio: 0.5
       gcTimerDuration: 300
     traces:
       syncDuration: 30
