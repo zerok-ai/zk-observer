@@ -49,6 +49,7 @@ spec:
           name: zk-otlp-receiver
         name: otlp-config
       - name: badger-data
-        persistentVolumeClaim:
-          claimName: zerok-badger-pvc
-          readOnly: false
+        emptyDir: {}
+{{/*        persistentVolumeClaim:*/}}
+{{/*          claimName: zerok-badger-pvc*/}}
+{{/*          readOnly: false*/}}
