@@ -443,16 +443,16 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 			return true
 		}
 
-		err = th.traceRedisHandler.PutTraceSource(traceIDStr, spanIDStr)
+		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
 		if err != nil {
-			logger.Debug(traceLogTag, "Error while putting trace source to redis ", err)
+			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
 			// Returning false to stop the iteration
 			return false
 		}
 
-		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, string(spanJSON))
+		err = th.traceRedisHandler.PutTraceSource(traceIDStr, spanIDStr)
 		if err != nil {
-			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
+			logger.Debug(traceLogTag, "Error while putting trace source to redis ", err)
 			// Returning false to stop the iteration
 			return false
 		}
