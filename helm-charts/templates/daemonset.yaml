@@ -46,6 +46,8 @@ spec:
 #        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver-arm64 -- -c /zk/config/config.yaml"]
         ports:
         - containerPort: 8147
+        - containerPort: 8047
+          hostPort: 31602
         resources: {}
         volumeMounts:
         - mountPath: /zk/config

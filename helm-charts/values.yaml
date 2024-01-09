@@ -19,6 +19,6 @@ ports:
 - port: 80
   protocol: TCP
   targetPort: 8147
-  nodePort: 31602
+  nodePort: 8147
 
 type: NodePort

@@ -73,10 +73,16 @@ func main() {
 
 	app.Post("/v1/traces", traceHandler.ServeHTTP)
 
-	configureBadgerGetStreamAPI(app, traceHandler)
-
 	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
 
+	if err != nil {
+		logger.Error(mainLogTag, "Error starting the server:", err)
+	}
+
+	//badger
+	newBadgerApp := newBadgerApp()
+	configureBadgerGetStreamAPI(newBadgerApp, traceHandler)
+	err = newBadgerApp.Run(iris.Addr(":"+"8047"), irisConfig)
 	if err != nil {
 		logger.Error(mainLogTag, "Error starting the server:", err)
 	}
@@ -84,6 +90,33 @@ func main() {
 }
 
 func newApp() *iris.Application {
+	app := iris.Default()
+
+	crs := func(ctx iris.Context) {
+		ctx.Header("Access-Control-Allow-Credentials", "true")
+
+		if ctx.Method() == iris.MethodOptions {
+			ctx.Header("Access-Control-Methods", "POST")
+
+			ctx.Header("Access-Control-Allow-Headers",
+				"Access-Control-Allow-Origin,Content-Type")
+
+			ctx.Header("Access-Control-Max-Age",
+				"86400")
+
+			ctx.StatusCode(iris.StatusNoContent)
+			return
+		}
+
+		ctx.Next()
+	}
+	app.UseRouter(crs)
+	app.AllowMethods(iris.MethodOptions)
+
+	return app
+}
+
+func newBadgerApp() *iris.Application {
 	app := iris.Default()
 
 	crs := func(ctx iris.Context) {
