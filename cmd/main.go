@@ -73,6 +73,8 @@ func main() {
 
 	app.Post("/v1/traces", traceHandler.ServeHTTP)
 
+	configureBadgerGetStreamAPI(app, traceHandler)
+
 	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
 
 	if err != nil {
@@ -125,4 +127,34 @@ func ProcessArgs(cfg interface{}) Args {
 
 	f.Parse(os.Args[1:])
 	return a
+}
+
+func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.TraceHandler) {
+	app.Post("get-trace-data", func(ctx iris.Context) {
+
+		var inputList []string
+
+		// Read the JSON input containing the list of strings
+		if err := ctx.ReadJSON(&inputList); err != nil {
+			ctx.StatusCode(iris.StatusBadRequest)
+			err := ctx.JSON(iris.Map{"error": "Invalid JSON input"})
+			if err != nil {
+				return
+			}
+			return
+		}
+
+		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
+		if err2 != nil {
+			return
+		}
+
+		ctx.StatusCode(iris.StatusAccepted)
+		err := ctx.JSON(data)
+		if err != nil {
+			logger.ErrorF(mainLogTag, "Unable to fetch data from badger %s", err)
+			return
+		}
+
+	}).Describe("Badger Data Fetch API")
 }

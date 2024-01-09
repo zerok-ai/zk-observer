@@ -46,3 +46,12 @@ func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanJSO
 func (h *TraceBadgerHandler) SyncPipeline() {
 	h.badgerHandler.StartCompaction()
 }
+
+func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]string, error) {
+	logger.InfoF(traceBadgerHandlerLogTag, "Fetching data form badger for given prefixList: %v", prefixList)
+	prefix, err := h.badgerHandler.BulkGetForPrefix(prefixList)
+	if err != nil {
+		return nil, err
+	}
+	return prefix, nil
+}

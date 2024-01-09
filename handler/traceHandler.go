@@ -462,3 +462,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 	})
 	return keysToDelete
 }
+
+func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (interface{}, interface{}) {
+	return th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+}
