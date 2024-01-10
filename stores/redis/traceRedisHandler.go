@@ -16,11 +16,13 @@ type TraceRedisHandler struct {
 	ctx          context.Context
 	config       *config.OtlpConfig
 	nodeIP       string
+	podIP        string
 }
 
 func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, error) {
 	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, clientDBNames.TraceDBName, otlpConfig.Traces.SyncDuration, otlpConfig.Traces.BatchSize, traceRedisHandlerLogTag)
 	nodeIP := os.Getenv("NODE_IP")
+	podIP := os.Getenv("POD_IP")
 
 	if err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while creating redis client ", err)
@@ -31,6 +33,7 @@ func NewTracesRedisHandler(otlpConfig *config.OtlpConfig) (*TraceRedisHandler, e
 		ctx:          context.Background(),
 		config:       otlpConfig,
 		nodeIP:       nodeIP,
+		podIP:        podIP,
 	}
 
 	return handler, nil
@@ -41,7 +44,7 @@ func (h *TraceRedisHandler) CheckRedisConnection() error {
 }
 
 func (h *TraceRedisHandler) PutTraceSource(traceId string, spanId string) error {
-	return h.PutTraceData(traceId, spanId, h.nodeIP)
+	return h.PutTraceData(traceId, spanId, h.podIP)
 }
 
 func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanJSON string) error {
