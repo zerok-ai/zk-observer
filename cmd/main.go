@@ -72,7 +72,7 @@ func main() {
 	})
 
 	app.Post("/v1/traces", traceHandler.ServeHTTP)
-
+	configureBadgerGetStreamAPI(app, traceHandler)
 	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
 
 	if err != nil {
@@ -80,12 +80,12 @@ func main() {
 	}
 
 	//badger
-	newBadgerApp := newBadgerApp()
-	configureBadgerGetStreamAPI(newBadgerApp, traceHandler)
-	err = newBadgerApp.Run(iris.Addr(":"+"8047"), irisConfig)
-	if err != nil {
-		logger.Error(mainLogTag, "Error starting the server:", err)
-	}
+	//newBadgerApp := newBadgerApp()
+
+	//err = newBadgerApp.Run(iris.Addr(":"+"8047"), irisConfig)
+	//if err != nil {
+	//	logger.Error(mainLogTag, "Error starting the server:", err)
+	//}
 
 }
 
