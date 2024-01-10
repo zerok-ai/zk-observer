@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -441,13 +442,14 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		spanProto, err := proto.Marshal(value.(proto.Message))
+		//spanProto, err := proto.Marshal(value.(proto.Message))
+		spanProto, err := json.Marshal(value)
 		if err != nil {
 			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
 			return true
 		}
 
-		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, spanProto)
+		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, string(spanProto))
 		if err != nil {
 			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
 			// Returning false to stop the iteration
