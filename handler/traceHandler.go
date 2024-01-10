@@ -16,7 +16,6 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
 	zkUtilsEnrichedSpan "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
-	zkUtilsProtoEnrichedRawSpan "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -282,8 +281,10 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 						GroupBy:                groupBy,
 					}
 
-					spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
-					th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
+					// TODO: uncomment below line when enabling proto and update signature of addEnrichedSpanToTraceStore
+					//spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
+					//th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
+					th.addEnrichedSpanToTraceStore(key, enrichedRawSpan)
 				}
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
 					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
@@ -409,7 +410,7 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 	}
 }
 
-func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkUtilsProtoEnrichedRawSpan.OtelEnrichedRawSpanForProto) {
+func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails zkUtilsEnrichedSpan.OtelEnrichedRawSpan) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
 	th.traceStore.Store(key, spanDetails)
