@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
@@ -67,7 +67,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -75,7 +75,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[st
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
 	var satisfiedWorkLoadIds WorkloadIdList
-	var groupByMap model.GroupByMap
+	var groupByMap zkUtilsCommonModel.GroupByMap
 	for _, scenario := range scenarios {
 		if scenario == nil {
 			logger.Info(spanFilteringLogTag, "No scenario found")
@@ -89,9 +89,9 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[st
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, processedWorkloadIds...)
 			if groupByValues, hasData := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
 				if groupByMap == nil {
-					groupByMap = make(model.GroupByMap)
+					groupByMap = make(zkUtilsCommonModel.GroupByMap)
 				}
-				groupByMap[model.ScenarioId(scenario.Id)] = groupByValues
+				groupByMap[zkUtilsCommonModel.ScenarioId(scenario.Id)] = groupByValues
 			}
 		}
 	}
@@ -102,7 +102,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[st
 	return satisfiedWorkLoadIds, groupByMap
 }
 
-func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (model.GroupByValues, bool) {
+func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (zkUtilsCommonModel.GroupByValues, bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "processGroupBy: Recovered from panic: ", r)
@@ -110,7 +110,7 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 	}()
 
 	var hasValueForScenario = false
-	var groupByValues = make(model.GroupByValues, len(scenario.GroupBy))
+	var groupByValues = make(zkUtilsCommonModel.GroupByValues, len(scenario.GroupBy))
 	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
 
 	for idx, groupByItem := range scenario.GroupBy {
@@ -121,7 +121,7 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 			//Getting title and hash from executor attributes
 			titleVal, _ := ff.EvaluateString(groupByItem.Title, spanDetailsMap, &attribKey)
 			hashVal, _ := ff.EvaluateString(groupByItem.Hash, spanDetailsMap, &attribKey)
-			groupByValues[idx] = &model.GroupByValueItem{
+			groupByValues[idx] = &zkUtilsCommonModel.GroupByValueItem{
 				WorkloadId: groupByItem.WorkloadId,
 				Title:      fmt.Sprintf("%v", titleVal),
 				Hash:       fmt.Sprintf("%v", hashVal),

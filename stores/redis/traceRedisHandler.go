@@ -47,16 +47,16 @@ func (h *TraceRedisHandler) PutTraceSource(traceId string, spanId string) error 
 	return h.PutTraceData(traceId, spanId, h.podIP)
 }
 
-func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanJSON string) error {
+func (h *TraceRedisHandler) PutTraceData(traceId string, spanId string, spanProto []byte) error {
 
 	if err := h.redisHandler.CheckRedisConnection(); err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while checking redis conn ", err)
 		return err
 	}
 
-	spanJsonMap := make(map[string]string)
-	spanJsonMap[spanId] = spanJSON
-	if err := h.redisHandler.HMSetPipeline(traceId, spanJsonMap, time.Duration(h.config.Traces.Ttl)*time.Second); err != nil {
+	spanProtoMap := make(map[string]interface{})
+	spanProtoMap[spanId] = spanProto
+	if err := h.redisHandler.HMSetPipeline(traceId, spanProtoMap, time.Duration(h.config.Traces.Ttl)*time.Second); err != nil {
 		logger.Error(traceRedisHandlerLogTag, "Error while setting trace details for traceId %s: %v\n", traceId, err)
 		return err
 	}
