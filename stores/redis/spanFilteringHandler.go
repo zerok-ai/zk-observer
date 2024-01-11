@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -25,8 +26,12 @@ import (
 var spanFilteringLogTag = "SpanFilteringHandler"
 
 var (
-	totalSpansProcessed = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_spans_processed_total",
+	totalSpansProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "zerok_receiver_spans_processed_total",
+		Help: "Total spans processed by the receiver.",
+	})
+	totalSpansFiltered = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "zerok_receiver_spans_filtered_total",
 		Help: "Total spans processed by the receiver.",
 	})
 )
@@ -51,10 +56,6 @@ type WorkloadIdList []string
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
-	err := prometheus.Register(totalSpansProcessed)
-	if err != nil {
-		return nil, err
-	}
 	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, clientDBNames.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
 		return nil, err
@@ -261,7 +262,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		}
 		if value {
 			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
-
+			totalSpansFiltered.Inc()
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
 			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
