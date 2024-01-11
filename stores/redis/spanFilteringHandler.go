@@ -51,6 +51,10 @@ type WorkloadIdList []string
 
 func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.ExecutorAttrStore, podDetailsStore *stores.LocalCacheHSetStore) (*SpanFilteringHandler, error) {
 	rand.Seed(time.Now().UnixNano())
+	err := prometheus.Register(totalSpansProcessed)
+	if err != nil {
+		return nil, err
+	}
 	store, err := zkredis.GetVersionedStore[zkmodel.Scenario](&cfg.Redis, clientDBNames.ScenariosDBName, time.Duration(cfg.Scenario.SyncDuration)*time.Second)
 	if err != nil {
 		return nil, err
