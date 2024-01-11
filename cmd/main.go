@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
+	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -23,23 +22,6 @@ import (
 
 var mainLogTag = "main"
 var ctx = context.Background()
-
-var (
-	totalFetchRequestsFromSM = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_otlp_receiver_span_details_fetch_requests_total",
-		Help: "total fetch calls received from scenario manager.",
-	})
-
-	totalFetchRequestsFromSMError = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_otlp_receiver_span_details_fetch_requests_error",
-		Help: "total fetch calls received from scenario manager.",
-	})
-
-	totalFetchRequestsFromSMSuccess = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_otlp_receiver_span_details_fetch_requests_success",
-		Help: "total fetch calls received from scenario manager.",
-	})
-)
 
 type Args struct {
 	ConfigPath string
@@ -188,25 +170,27 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 	app.Post("get-trace-data", func(ctx iris.Context) {
 
 		var inputList []string
-
-		totalFetchRequestsFromSM.Inc()
+		promMetrics.TotalFetchRequestsFromSM.Inc()
 		// Read the JSON input containing the list of strings
 		if err := ctx.ReadJSON(&inputList); err != nil {
 			ctx.StatusCode(iris.StatusBadRequest)
 			err := ctx.JSON(iris.Map{"error": "Invalid JSON input"})
 			logger.Info(mainLogTag, fmt.Sprintf("Request Received to get span data : %s", inputList))
 			if err != nil {
-				totalFetchRequestsFromSMError.Inc()
+				promMetrics.TotalFetchRequestsFromSMError.Inc()
 				logger.Error(mainLogTag, "Invalid request format for fetching badger data for trace prefix list ", err)
 				return
 			}
 			return
 		}
 
+		//total traces span data requested from receiver
+		promMetrics.TotalTracesSpanDataRequestedFromReceiver.Add(float64(len(inputList)))
+
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
 		logger.Info(mainLogTag, fmt.Sprintf("Trace span Data from badger for inputList: %s is %s", inputList, data))
 		if err2 != nil {
-			totalFetchRequestsFromSMError.Inc()
+			promMetrics.TotalFetchRequestsFromSMError.Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err2)
 			ctx.StatusCode(iris.StatusInternalServerError)
 			return
@@ -214,11 +198,11 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		ctx.StatusCode(iris.StatusOK)
 		err := ctx.JSON(data)
 		if err != nil {
-			totalFetchRequestsFromSMError.Inc()
+			promMetrics.TotalFetchRequestsFromSMError.Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}
-		totalFetchRequestsFromSMSuccess.Inc()
+		promMetrics.TotalFetchRequestsFromSMSuccess.Inc()
 
 	}).Describe("Badger Data Fetch API")
 }

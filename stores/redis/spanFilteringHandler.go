@@ -3,10 +3,9 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
+	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -24,17 +23,6 @@ import (
 )
 
 var spanFilteringLogTag = "SpanFilteringHandler"
-
-var (
-	totalSpansProcessed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_receiver_spans_processed_total",
-		Help: "Total spans processed by the receiver.",
-	})
-	totalSpansFiltered = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_receiver_spans_filtered_total",
-		Help: "Total spans filtered by the receiver.",
-	})
-)
 
 type SpanFilteringHandler struct {
 	VersionedStore    *zkredis.VersionedStore[zkmodel.Scenario]
@@ -81,7 +69,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 }
 
 func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
-	totalSpansProcessed.Inc()
+	promMetrics.TotalSpansProcessed.Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -269,7 +257,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		}
 	}
 	if len(satisfiedWorkLoadIds) > 0 {
-		totalSpansFiltered.Inc()
+		promMetrics.TotalSpansFiltered.Inc()
 	}
 	return satisfiedWorkLoadIds
 }
