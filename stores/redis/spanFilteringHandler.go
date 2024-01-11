@@ -32,12 +32,7 @@ var (
 	})
 	totalSpansFiltered = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "zerok_receiver_spans_filtered_total",
-		Help: "Total spans processed by the receiver.",
-	})
-
-	totalSpansProcessedTemp = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "zerok_total_spans_processed_temp",
-		Help: "Total number of spans processed",
+		Help: "Total spans filtered by the receiver.",
 	})
 )
 
@@ -87,7 +82,6 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 
 func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
 	totalSpansProcessed.Inc()
-	totalSpansProcessedTemp.Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -268,12 +262,14 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		}
 		if value {
 			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
-			totalSpansFiltered.Inc()
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
 			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, id)
 		}
+	}
+	if len(satisfiedWorkLoadIds) > 0 {
+		totalSpansFiltered.Inc()
 	}
 	return satisfiedWorkLoadIds
 }
