@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -28,6 +29,11 @@ var (
 	totalSpansProcessed = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "zerok_spans_processed_total",
 		Help: "Total spans processed by the receiver.",
+	})
+
+	totalSpansProcessedTemp = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "zerok_total_spans_processed_temp",
+		Help: "Total number of spans processed",
 	})
 )
 
@@ -81,6 +87,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 
 func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
 	totalSpansProcessed.Inc()
+	totalSpansProcessedTemp.Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
