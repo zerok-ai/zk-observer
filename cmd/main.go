@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
@@ -66,6 +67,8 @@ func main() {
 		DisablePathCorrection: true,
 		LogLevel:              otlpConfig.Logs.Level,
 	})
+
+	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
 
 	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)

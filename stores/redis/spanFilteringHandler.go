@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
@@ -22,6 +23,13 @@ import (
 )
 
 var spanFilteringLogTag = "SpanFilteringHandler"
+
+var (
+	totalSpansProcessed = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "zerok_spans_processed_total",
+		Help: "Total spans processed by the receiver.",
+	})
+)
 
 type SpanFilteringHandler struct {
 	VersionedStore    *zkredis.VersionedStore[zkmodel.Scenario]
@@ -68,6 +76,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 }
 
 func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
+	totalSpansProcessed.Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -248,6 +257,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		}
 		if value {
 			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
+
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
 			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
