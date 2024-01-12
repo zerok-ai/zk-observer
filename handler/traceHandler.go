@@ -442,7 +442,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		spanProto, err := proto.Marshal(value.(proto.Message))
+		spanProto, err := proto.Marshal(value.(*zkUtilsOtel.OtelEnrichedRawSpanForProto))
 		if err != nil {
 			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
 			return true
