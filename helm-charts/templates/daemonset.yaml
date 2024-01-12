@@ -40,13 +40,13 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: "ZK_REDIS_PASSWORD"
-          value: 6r5FgFl0wv
+          value: eKbbxAn8qr
 {{/*          valueFrom:*/}}
 {{/*            secretKeyRef:*/}}
 {{/*              name: "redis"*/}}
 {{/*              key: "redis-password"*/}}
         - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
-          value: redis-master.zk-loadtest.svc.cluster.local
+          value: redis-master.zk-client.svc.cluster.local
 {{/*          valueFrom:*/}}
 {{/*            configMapKeyRef:*/}}
 {{/*              name: "zk-redis-config"*/}}
