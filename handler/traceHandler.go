@@ -412,7 +412,13 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkUtilsOtel.OtelEnrichedRawSpanForProto) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
-	th.traceStore.Store(key, spanDetails)
+	spanProto, err := proto.Marshal(spanDetails)
+	if err != nil {
+		logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, err)
+		return
+	}
+
+	th.traceStore.Store(key, spanProto)
 }
 
 func (th *TraceHandler) addZkSpanToTraceStore(key string, spanDetails model.OTelSpanDetails) {
@@ -442,17 +448,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		spanProto, err := proto.Marshal(value.(*zkUtilsOtel.OtelEnrichedRawSpanForProto))
-		if err != nil {
-			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
-			return true
-		}
-
-		logger.InfoF(traceLogTag, "Pushing span to redis for spanID %s\n", spanProto)
-		logger.InfoF(traceLogTag, "Pushing span to redis for spanID %v\n", spanProto)
-		logger.Info(traceLogTag, "----------------------")
-
-		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, spanProto)
+		err := th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, value.([]byte))
 		if err != nil {
 			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
 			// Returning false to stop the iteration
