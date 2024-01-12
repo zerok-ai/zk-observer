@@ -468,6 +468,6 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 	return keysToDelete
 }
 
-func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (map[string]string, error) {
+func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (map[string]*zkUtilsOtel.OtelEnrichedRawSpanForProto, error) {
 	return th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
 }

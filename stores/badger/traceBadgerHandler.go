@@ -3,8 +3,10 @@ package badger
 import (
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	__ "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	"github.com/zerok-ai/zk-utils-go/storage/badger"
 	"time"
 )
@@ -48,7 +50,7 @@ func (h *TraceBadgerHandler) SyncPipeline() {
 	h.badgerHandler.StartCompaction()
 }
 
-func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]string, error) {
+func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]*__.OtelEnrichedRawSpanForProto, error) {
 	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given tracePrefixList: %v", prefixList))
 	prefix, err := h.badgerHandler.BulkGetForPrefix(prefixList)
 	if err != nil {
@@ -56,5 +58,17 @@ func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[
 		return nil, err
 	}
 	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", prefix))
-	return prefix, nil
+
+	finalResp := make(map[string]*__.OtelEnrichedRawSpanForProto)
+	for k, value := range prefix {
+		var d __.OtelEnrichedRawSpanForProto
+		err := proto.Unmarshal([]byte(value), &d)
+		if err != nil {
+			logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
+			continue
+		}
+		finalResp[k] = &d
+	}
+
+	return finalResp, nil
 }

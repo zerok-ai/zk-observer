@@ -40,17 +40,15 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: "ZK_REDIS_PASSWORD"
-          value: eKbbxAn8qr
-{{/*          valueFrom:*/}}
-{{/*            secretKeyRef:*/}}
-{{/*              name: "redis"*/}}
-{{/*              key: "redis-password"*/}}
+          valueFrom:
+            secretKeyRef:
+              name: "redis"
+              key: "redis-password"
         - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
-          value: redis-master.zk-client.svc.cluster.local
-{{/*          valueFrom:*/}}
-{{/*            configMapKeyRef:*/}}
-{{/*              name: "zk-redis-config"*/}}
-{{/*              key: "redisHost"*/}}
+          valueFrom:
+            configMapKeyRef:
+              name: "zk-redis-config"
+              key: "redisHost"
         image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: zk-otlp-receiver
