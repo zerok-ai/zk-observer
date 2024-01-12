@@ -448,6 +448,10 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 			return true
 		}
 
+		logger.InfoF(traceLogTag, "Pushing span to redis for spanID %s\n", spanProto)
+		logger.InfoF(traceLogTag, "Pushing span to redis for spanID %v\n", spanProto)
+		logger.Info(traceLogTag, "----------------------")
+
 		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, spanProto)
 		if err != nil {
 			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
