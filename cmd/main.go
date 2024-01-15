@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
@@ -26,6 +27,11 @@ var ctx = context.Background()
 
 type Args struct {
 	ConfigPath string
+}
+
+// register collector method
+func init() {
+	prometheus.MustRegister(promMetrics.BadgerCollector(""))
 }
 
 func main() {
