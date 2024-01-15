@@ -418,6 +418,15 @@ func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkU
 		return
 	}
 
+	x := zkUtilsOtel.OtelEnrichedRawSpanForProto{}
+	err = proto.Unmarshal(spanProto, &x)
+	if err != nil {
+		logger.Error(traceLogTag, "Error while unmarshalling span details for spanId ", spanDetails.Span.SpanId, " error is ", err)
+	}
+
+	logger.Info(traceLogTag, spanProto)
+	logger.Info(traceLogTag, "SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, x)
+
 	th.traceStore.Store(key, spanProto)
 }
 
