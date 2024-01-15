@@ -17,6 +17,7 @@ import (
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 	"net"
+	"net/http"
 	"os"
 )
 
@@ -70,6 +71,9 @@ func main() {
 	})
 
 	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
+
+	// Define a route to expose expvar data
+	app.Get("/debug/vars", iris.FromStd(http.DefaultServeMux))
 
 	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)
