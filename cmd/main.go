@@ -193,13 +193,13 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		//	return
 		//}
 
-		err = ctx.JSON(data)
+		err := ctx.JSON(data)
 		if err != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}
 
-		logger.Info(mainLogTag, jsonData)
+		logger.Info(mainLogTag, data)
 		logger.Info(mainLogTag, "*************************************************")
 
 	}).Describe("Badger Data Fetch API")
