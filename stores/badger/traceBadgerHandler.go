@@ -2,6 +2,7 @@ package badger
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
@@ -67,8 +68,26 @@ func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[
 			logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
 			continue
 		}
+		removeThis(&d)
 		finalResp[k] = &d
 	}
 
 	return finalResp, nil
+}
+
+func removeThis(d *__.OtelEnrichedRawSpanForProto) {
+	// json marshal and unmarsal to remove the unwanted fields d
+	j, err := json.Marshal(d)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var xx __.OtelEnrichedRawSpanForProto
+	err = json.Unmarshal(j, &xx)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	return
 }
