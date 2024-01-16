@@ -179,6 +179,8 @@ func ProcessArgs(cfg interface{}) Args {
 func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.TraceHandler) {
 	app.Post("get-trace-data", func(ctx iris.Context) {
 
+		logger.Fatal(mainLogTag, "Request Received to get span data from SM")
+
 		var inputList []string
 		promMetrics.TotalFetchRequestsFromSM.Inc()
 		// Read the JSON input containing the list of strings
