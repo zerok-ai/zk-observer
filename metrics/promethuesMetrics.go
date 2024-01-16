@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
@@ -71,5 +72,5 @@ func BadgerCollector(namespace string) prometheus.Collector {
 			nil, nil,
 		)
 	}
-	return prometheus.NewExpvarCollector(exports)
+	return collectors.NewExpvarCollector(exports)
 }
