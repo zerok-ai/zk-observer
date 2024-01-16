@@ -24,6 +24,7 @@ import (
 
 var mainLogTag = "main"
 var ctx = context.Background()
+var podIp = os.Getenv("POD_IP")
 
 type Args struct {
 	ConfigPath string
@@ -182,14 +183,14 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		logger.Fatal(mainLogTag, "Request Received to get span data from SM")
 
 		var inputList []string
-		promMetrics.TotalFetchRequestsFromSM.Inc()
+		promMetrics.TotalFetchRequestsFromSM.WithLabelValues(podIp).Inc()
 		// Read the JSON input containing the list of strings
 		if err := ctx.ReadJSON(&inputList); err != nil {
 			ctx.StatusCode(iris.StatusBadRequest)
 			err := ctx.JSON(iris.Map{"error": "Invalid JSON input"})
 			logger.Info(mainLogTag, fmt.Sprintf("Request Received to get span data : %s", inputList))
 			if err != nil {
-				promMetrics.TotalFetchRequestsFromSMError.Inc()
+				promMetrics.TotalFetchRequestsFromSMError.WithLabelValues(podIp).Inc()
 				logger.Error(mainLogTag, "Invalid request format for fetching badger data for trace prefix list ", err)
 				return
 			}
@@ -197,12 +198,12 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		}
 
 		//total traces span data requested from receiver
-		promMetrics.TotalTracesSpanDataRequestedFromReceiver.Add(float64(len(inputList)))
+		promMetrics.TotalTracesSpanDataRequestedFromReceiver.WithLabelValues(podIp).Add(float64(len(inputList)))
 
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
 		logger.Info(mainLogTag, fmt.Sprintf("Trace span Data from badger for inputList: %s is %s", inputList, data))
 		if err2 != nil {
-			promMetrics.TotalFetchRequestsFromSMError.Inc()
+			promMetrics.TotalFetchRequestsFromSMError.WithLabelValues(podIp).Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err2)
 			ctx.StatusCode(iris.StatusInternalServerError)
 			return
@@ -210,11 +211,11 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		ctx.StatusCode(iris.StatusOK)
 		err := ctx.JSON(data)
 		if err != nil {
-			promMetrics.TotalFetchRequestsFromSMError.Inc()
+			promMetrics.TotalFetchRequestsFromSMError.WithLabelValues(podIp).Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}
-		promMetrics.TotalFetchRequestsFromSMSuccess.Inc()
+		promMetrics.TotalFetchRequestsFromSMSuccess.WithLabelValues(podIp).Inc()
 
 	}).Describe("Badger Data Fetch API")
 }

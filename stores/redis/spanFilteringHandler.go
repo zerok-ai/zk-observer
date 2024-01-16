@@ -17,12 +17,14 @@ import (
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
 var spanFilteringLogTag = "SpanFilteringHandler"
+var podIp = os.Getenv("POD_IP")
 
 type SpanFilteringHandler struct {
 	VersionedStore    *zkredis.VersionedStore[zkmodel.Scenario]
@@ -69,7 +71,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 }
 
 func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
-	promMetrics.TotalSpansProcessed.Inc()
+	promMetrics.TotalSpansProcessed.WithLabelValues(podIp).Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -257,7 +259,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		}
 	}
 	if len(satisfiedWorkLoadIds) > 0 {
-		promMetrics.TotalSpansFiltered.Inc()
+		promMetrics.TotalSpansFiltered.WithLabelValues(podIp).Inc()
 	}
 	return satisfiedWorkLoadIds
 }
