@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -188,13 +187,13 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 			return
 		}
 		ctx.StatusCode(iris.StatusOK)
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err)
-			return
-		}
+		//jsonData, err := json.Marshal(data)
+		//if err != nil {
+		//	logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err)
+		//	return
+		//}
 
-		err = ctx.JSON(jsonData)
+		err = ctx.JSON(data)
 		if err != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
