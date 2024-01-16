@@ -477,6 +477,25 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 	return keysToDelete
 }
 
-func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (map[string]*zkUtilsOtel.OtelEnrichedRawSpanForProto, error) {
-	return th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zkUtilsOtel.BadgerResponseList, error) {
+	traceToDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+	var resp *zkUtilsOtel.BadgerResponseList
+	if err != nil {
+		logger.Error(traceLogTag, "Error while getting data from badger for prefix list ", prefixList, " error is ", err)
+		return resp, err
+	}
+
+	if len(traceToDataMap) > 0 {
+		resp = zkUtilsCommonModel.ToPtr(zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0)})
+	}
+
+	for k, v := range traceToDataMap {
+		var d zkUtilsOtel.BadgerResponse
+		d.Key = k
+		d.Value = v
+		resp.ResponseList = append(resp.ResponseList, &d)
+	}
+
+	return resp, nil
+
 }

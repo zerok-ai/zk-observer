@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	__ "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
@@ -193,7 +195,15 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		//	return
 		//}
 
-		err := ctx.JSON(data)
+		protoData, err := proto.Marshal(data)
+		testUnmarshall(protoData)
+		if err != nil {
+			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err)
+			return
+		}
+		ctx.ContentType("application/octet-stream")
+
+		_, err = ctx.Write(protoData)
 		if err != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
@@ -203,4 +213,14 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		logger.Info(mainLogTag, "*************************************************")
 
 	}).Describe("Badger Data Fetch API")
+}
+
+func testUnmarshall(protoData []byte) {
+	var result __.BadgerResponseList
+	err := proto.Unmarshal(protoData, &result)
+	if err != nil {
+		logger.Error(mainLogTag, "Error while unmarshalling data from badger for given tracePrefixList", err)
+	}
+
+	logger.Info(mainLogTag, &result)
 }
