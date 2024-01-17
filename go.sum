@@ -276,6 +276,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+github.com/zerok-ai/zk-utils-go v0.5.19-test3.0.20240116084210-3a86e1f89c59 h1:jM+g8IZOHMkysPYcdXl2VZpOZP9+Asku5IZ3Nwm2/cU=
+github.com/zerok-ai/zk-utils-go v0.5.19-test3.0.20240116084210-3a86e1f89c59/go.mod h1:dRfUoayXLkRyhRTf+Sic6TITAVqR41fPKItFChHG1DU=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger h1:iJ8hfZnSxXOoJ01/dkZfbXo5nARazX9myND8sSZgleM=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger/go.mod h1:JhhMTjrxcY5Rze4KxYU6KgK8LOipbiHbZgvBG3KcGfc=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240108150921-ca4cdc1f3f31 h1:5vhQPHLzRkcQmey1FqI7qp7oX1gfzM39yoJKlW5ziRA=
@@ -300,6 +302,8 @@ github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116134933-d974b906faa9 h1:
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116134933-d974b906faa9/go.mod h1:x1Mm7fjc+vaXCOsMkRiE5ua8TlaMgpe4v1UDxHpjDfY=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116135737-93bea541ee75 h1:jqyGQbC8EiHwxSY02y+9AvQl2ezO/IUgKDLm3xCOO6U=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116135737-93bea541ee75/go.mod h1:x1Mm7fjc+vaXCOsMkRiE5ua8TlaMgpe4v1UDxHpjDfY=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240117091327-a664f46f6078 h1:POQ2qa8cZnjh9U4phw+FJki02UrERhw6StY02U0I/j0=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240117091327-a664f46f6078/go.mod h1:x1Mm7fjc+vaXCOsMkRiE5ua8TlaMgpe4v1UDxHpjDfY=
 go.opentelemetry.io/proto/otlp v1.0.0 h1:T0TX0tmXU8a3CbNXzEKGeU5mIVOdf0oykP+u2lIVU/I=
 go.opentelemetry.io/proto/otlp v1.0.0/go.mod h1:Sy6pihPLfYHkr3NkUbEhGHFhINUSI/v80hjKIs5JXpM=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=

@@ -47,3 +47,6 @@ data:
       syncDuration: 30
       batchSize: 30
       ttl: 3600
+    tcpServerConfig:
+      port: 31603
+      sendAck: true
