@@ -165,7 +165,6 @@ func ProcessArgs(cfg interface{}) Args {
 
 func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.TraceHandler) {
 	app.Post("get-trace-data", func(ctx iris.Context) {
-
 		var inputList []string
 
 		// Read the JSON input containing the list of strings
@@ -200,6 +199,11 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 			return
 		}
 		ctx.ContentType("application/octet-stream")
+
+		// log the bytes of protoData
+		logger.Info(mainLogTag, "--------------------------------")
+		logger.Info(mainLogTag, protoData)
+		logger.Info(mainLogTag, "--------------------------------")
 
 		_, err = ctx.Write(protoData)
 		if err != nil {
