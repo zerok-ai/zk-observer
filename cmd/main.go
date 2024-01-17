@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 )
 
 var mainLogTag = "main"
@@ -88,7 +89,14 @@ func main() {
 
 	app.Post("/v1/traces", traceHandler.ServeHTTP)
 	configureBadgerGetStreamAPI(app, traceHandler)
-	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
+
+	// Start the server with timeouts
+	srv := &http.Server{
+		Addr:         ":" + otlpConfig.Port,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+	err = app.Run(iris.Server(srv), irisConfig)
 
 	if err != nil {
 		logger.Error(mainLogTag, "Error starting the server:", err)
