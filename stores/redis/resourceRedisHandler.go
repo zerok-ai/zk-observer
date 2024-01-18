@@ -2,8 +2,10 @@ package redis
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"sync"
@@ -43,8 +45,9 @@ func (h *ResourceRedisHandler) SyncResourceData(resourceIp string, attrMap map[s
 		return err
 	}
 
-	if len(resourceIp) == 0 {
+	if common.IsEmpty(resourceIp) {
 		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty")
+		return errors.New("resourceIp is empty")
 	}
 
 	_, ok := h.existingResourceData.Load(resourceIp)
@@ -58,7 +61,6 @@ func (h *ResourceRedisHandler) SyncResourceData(resourceIp string, attrMap map[s
 			return err
 		}
 		filteredResourceData["telemetry"] = string(telemetryDataJSON)
-		logger.Debug("Setting resource data ", filteredResourceData)
 		err = h.redisHandler.HMSet(resourceIp, filteredResourceData)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)

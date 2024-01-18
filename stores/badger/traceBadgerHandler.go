@@ -41,7 +41,7 @@ func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanPro
 		logger.ErrorF(traceBadgerHandlerLogTag, "Error while setting trace details for traceId %s: %v", traceId, err)
 		return err
 	}
-	logger.InfoF(traceBadgerHandlerLogTag, "Value at %s successfully set.", key)
+
 	return nil
 }
 
@@ -50,13 +50,11 @@ func (h *TraceBadgerHandler) SyncPipeline() {
 }
 
 func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]*__.OtelEnrichedRawSpanForProto, error) {
-	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given tracePrefixList: %v", prefixList))
 	prefix, err := h.badgerHandler.BulkGetForPrefix(prefixList)
 	if err != nil {
 		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given tracePrefixList: %v", prefixList), err)
 		return nil, err
 	}
-	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", prefix))
 
 	finalResp := make(map[string]*__.OtelEnrichedRawSpanForProto)
 	for k, value := range prefix {
