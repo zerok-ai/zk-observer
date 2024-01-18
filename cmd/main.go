@@ -188,7 +188,6 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		}
 
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
-		logger.Info(mainLogTag, fmt.Sprintf("Trace span Data from badger for inputList: %s is %s", inputList, data))
 		if err2 != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err2)
 			ctx.StatusCode(iris.StatusInternalServerError)
@@ -207,20 +206,10 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 			return
 		}
 		ctx.ContentType("application/octet-stream")
-
-		// log the bytes of protoData
-		logger.Info(mainLogTag, "--------------------------------")
-		logger.Info(mainLogTag, protoData)
-		logger.Info(mainLogTag, "--------------------------------")
-
 		_, err = ctx.Write(protoData)
 		if err != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}
-
-		logger.Info(mainLogTag, data)
-		logger.Info(mainLogTag, "*************************************************")
-
 	}).Describe("Badger Data Fetch API")
 }

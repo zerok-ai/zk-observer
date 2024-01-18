@@ -264,15 +264,15 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
 				th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error: ", err)
 				}
 			}
 		}
@@ -394,12 +394,6 @@ func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkU
 	if err != nil {
 		logger.ErrorF(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, err)
 		return
-	}
-
-	x := zkUtilsOtel.OtelEnrichedRawSpanForProto{}
-	err = proto.Unmarshal(spanProto, &x)
-	if err != nil {
-		logger.Error(traceLogTag, "Error while unmarshalling span details for spanId ", spanDetails.Span.SpanId, " error is ", err)
 	}
 
 	th.traceStore.Store(key, spanProto)

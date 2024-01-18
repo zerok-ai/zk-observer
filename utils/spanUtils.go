@@ -58,10 +58,8 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 		if ok1 && ok2 {
 			podNameStr, ok1 := podName.(string)
 			namespaceStr, ok2 := namespace.(string)
-			logger.Debug(spanUtilsLogTag, "Pod name is ", podNameStr, " namespace is ", namespaceStr)
 			if ok1 && ok2 {
 				clientIp, err := GetPodIP(podNameStr, namespaceStr)
-				//logger.Debug(spanUtilsLogTag, "Client IP is ", clientIp, " error is ", err)
 				if err == nil {
 					sourceIP = clientIp
 				}
