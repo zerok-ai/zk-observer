@@ -304,6 +304,14 @@ github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116135737-93bea541ee75 h1:
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240116135737-93bea541ee75/go.mod h1:x1Mm7fjc+vaXCOsMkRiE5ua8TlaMgpe4v1UDxHpjDfY=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240117091327-a664f46f6078 h1:POQ2qa8cZnjh9U4phw+FJki02UrERhw6StY02U0I/j0=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240117091327-a664f46f6078/go.mod h1:x1Mm7fjc+vaXCOsMkRiE5ua8TlaMgpe4v1UDxHpjDfY=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118082656-8adab3ec1a89 h1:uWfQpfzqfNgbz/VokbWfkkVTs2vHgUHmmhHngfWghqs=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118082656-8adab3ec1a89/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118090250-de349b21f1ed h1:iJfGl8s3FZ6DEyYUORQ70KxrHt8heNZCt/NT97BkslQ=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118090250-de349b21f1ed/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118102154-7a7e70c37aa4 h1:G4PQWrdktSdYJAXLKYNdBWRGSNH6PiFOWtUICBcGGAc=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118102154-7a7e70c37aa4/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118102307-e86ee02b4630 h1:2XeO4lHyd0kHMQpUOeOw1RZVtiPjTjxRUZ2HgIL/u2s=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118102307-e86ee02b4630/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
 go.opentelemetry.io/proto/otlp v1.0.0 h1:T0TX0tmXU8a3CbNXzEKGeU5mIVOdf0oykP+u2lIVU/I=
 go.opentelemetry.io/proto/otlp v1.0.0/go.mod h1:Sy6pihPLfYHkr3NkUbEhGHFhINUSI/v80hjKIs5JXpM=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=

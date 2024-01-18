@@ -6,7 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	__ "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
+	__ "github.com/zerok-ai/zk-utils-go/proto"
 	"github.com/zerok-ai/zk-utils-go/storage/badger"
 	"time"
 )
@@ -37,9 +37,19 @@ func NewTracesBadgerHandler(otlpConfig *config.OtlpConfig) (*TraceBadgerHandler,
 
 func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanProto []byte) error {
 	key := traceId + "-" + spanId
-	logger.InfoF(traceBadgerHandlerLogTag, "Setting %s as %s", key, spanProto)
-	if err := h.badgerHandler.Set(key, string(spanProto), int64(time.Duration(h.config.Traces.Ttl)*time.Second)); err != nil {
-		logger.ErrorF(traceBadgerHandlerLogTag, "Error while setting trace details for traceId %s: %v", traceId, err)
+	return h.PutData(key, spanProto)
+}
+
+// PutEbpfData Method to set ebpf data in badger
+func (h *TraceBadgerHandler) PutEbpfData(traceId string, spanId string, ebpfData []byte) error {
+	key := traceId + "-" + spanId + "-e"
+	return h.PutData(key, ebpfData)
+}
+
+func (h *TraceBadgerHandler) PutData(key string, data []byte) error {
+	logger.InfoF(traceBadgerHandlerLogTag, "Setting %s as %s", key, data)
+	if err := h.badgerHandler.Set(key, data, time.Duration(h.config.Traces.Ttl)*time.Second); err != nil {
+		logger.ErrorF(traceBadgerHandlerLogTag, "Error while setting trace details for key with error ", key, err)
 		return err
 	}
 	logger.InfoF(traceBadgerHandlerLogTag, "Value at %s successfully set.", key)

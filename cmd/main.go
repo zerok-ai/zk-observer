@@ -10,6 +10,7 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
+	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -41,7 +42,13 @@ func main() {
 	logger.Init(otlpConfig.Logs)
 	storeFactory := *stores.GetStoreFactory(otlpConfig.Redis, ctx)
 
-	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory)
+	traceBadgerHandler, err := badger.NewTracesBadgerHandler(otlpConfig)
+	if err != nil {
+		logger.Error(mainLogTag, "Error while creating badger handler:", err)
+		return
+	}
+
+	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory, traceBadgerHandler)
 
 	if err != nil {
 		logger.Error(mainLogTag, "Error while creating traceHandler:", err)
