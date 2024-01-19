@@ -7,8 +7,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
+	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
@@ -27,6 +30,11 @@ var ctx = context.Background()
 
 type Args struct {
 	ConfigPath string
+}
+
+// register collector method
+func init() {
+	prometheus.MustRegister(promMetrics.BadgerCollector(""))
 }
 
 func main() {
@@ -80,6 +88,11 @@ func main() {
 		DisablePathCorrection: true,
 		LogLevel:              otlpConfig.Logs.Level,
 	})
+
+	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
+
+	// Define a route to expose expvar data
+	app.Get("/debug/vars", iris.FromStd(http.DefaultServeMux))
 
 	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)
@@ -185,22 +198,27 @@ func ProcessArgs(cfg interface{}) Args {
 func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.TraceHandler) {
 	app.Post("get-trace-data", func(ctx iris.Context) {
 		var inputList []string
-
+		promMetrics.TotalFetchRequestsFromSM.Inc()
 		// Read the JSON input containing the list of strings
 		if err := ctx.ReadJSON(&inputList); err != nil {
 			ctx.StatusCode(iris.StatusBadRequest)
 			err := ctx.JSON(iris.Map{"error": "Invalid JSON input"})
 			logger.Info(mainLogTag, fmt.Sprintf("Request Received to get span data : %s", inputList))
 			if err != nil {
+				promMetrics.TotalFetchRequestsFromSMError.Inc()
 				logger.Error(mainLogTag, "Invalid request format for fetching badger data for trace prefix list ", err)
 				return
 			}
 			return
 		}
 
+		//total traces span data requested from receiver
+		promMetrics.TotalTracesSpanDataRequestedFromReceiver.Add(float64(len(inputList)))
+
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
 		logger.Info(mainLogTag, fmt.Sprintf("Trace span Data from badger for inputList: %s is %s", inputList, data))
 		if err2 != nil {
+			promMetrics.TotalFetchRequestsFromSMError.Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err2)
 			ctx.StatusCode(iris.StatusInternalServerError)
 			return
@@ -226,9 +244,11 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 
 		_, err = ctx.Write(protoData)
 		if err != nil {
+			promMetrics.TotalFetchRequestsFromSMError.Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}
+		promMetrics.TotalFetchRequestsFromSMSuccess.Inc()
 
 		logger.Info(mainLogTag, data)
 		logger.Info(mainLogTag, "*************************************************")
