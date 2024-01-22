@@ -65,7 +65,7 @@ func main() {
 
 	//Starting tcp socket sever for receiving ebpf data
 	logger.Debug(mainLogTag, "Starting tcp server.")
-	handler.CreateAndStartEbpfHandler(otlpConfig, traceBadgerHandler)
+	go handler.CreateAndStartEbpfHandler(otlpConfig, traceBadgerHandler)
 
 	logger.Debug(mainLogTag, "Starting grpc server.")
 
