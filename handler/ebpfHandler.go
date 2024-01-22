@@ -41,11 +41,10 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	ebpfDataForSpan := ebpfDataResponse.EbpfData
 
 	//Save the data into badger
-	badgerKey := GetBadgerKey(traceId, spanId)
-	logger.Debug(ebpfHandlerLogTag, "Saving data into badger with key: ", badgerKey)
-	err = handler.traceBadgerHandler.PutData(badgerKey, ebpfDataForSpan)
+	logger.Debug(ebpfHandlerLogTag, "Saving data into badger with key: ", traceId, spanId)
+	err = handler.traceBadgerHandler.PutEbpfData(traceId, spanId, ebpfDataForSpan)
 	if err != nil {
-		logger.Debug(ebpfHandlerLogTag, "Error while saving data into badger with key: ", badgerKey)
+		logger.Debug(ebpfHandlerLogTag, "Error while saving data into badger with key: ", traceId, spanId, err)
 		return ""
 	}
 	//Filter the data based on rules in probes
@@ -53,8 +52,4 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	//Save the filtered data to DB1
 
 	return "Server received: " + string(data[:])
-}
-
-func GetBadgerKey(traceId string, spanId string) string {
-	return traceId + "_" + spanId + "_e"
 }

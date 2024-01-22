@@ -42,7 +42,7 @@ func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanPro
 
 // PutEbpfData Method to set ebpf data in badger
 func (h *TraceBadgerHandler) PutEbpfData(traceId string, spanId string, ebpfData []byte) error {
-	key := traceId + "-" + spanId + "-e"
+	key := traceId + "-e" + "-" + spanId
 	return h.PutData(key, ebpfData)
 }
 
