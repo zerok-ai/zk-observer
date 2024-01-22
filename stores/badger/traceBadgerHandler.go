@@ -82,3 +82,15 @@ func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[
 
 	return finalResp, nil
 }
+
+// Function to get badger data for a key
+func (h *TraceBadgerHandler) GetData(key string) (string, error) {
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given key: %s", key))
+	value, err := h.badgerHandler.Get(key)
+	if err != nil {
+		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given key: %s", key), err)
+		return "", err
+	}
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given key: %s", key))
+	return value, nil
+}

@@ -91,6 +91,19 @@ func main() {
 
 	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
 
+	app.Get("/getvar", func(ctx iris.Context) {
+		//Get query param from iris context
+		key := ctx.URLParam("key")
+		value, err := traceBadgerHandler.GetData(key)
+		//log error
+		if err != nil {
+			logger.Error(mainLogTag, "Error while getting data from badger:", err)
+			return
+		}
+		//log value
+		logger.Info(mainLogTag, fmt.Sprintf("Value for key %s is %s", key, value))
+	})
+
 	// Define a route to expose expvar data
 	app.Get("/debug/vars", iris.FromStd(http.DefaultServeMux))
 
