@@ -4,7 +4,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	logsConfig "github.com/zerok-ai/zk-utils-go/logs/config"
-	"github.com/zerok-ai/zk-utils-go/socket"
 	badgerConfig "github.com/zerok-ai/zk-utils-go/storage/badger/config"
 	zkconfig "github.com/zerok-ai/zk-utils-go/storage/redis/config"
 	"os"
@@ -51,7 +50,6 @@ type OtlpConfig struct {
 	Scenario          ScenarioConfig            `yaml:"scenario"`
 	Exception         ExceptionConfig           `yaml:"exception"`
 	Resources         ResourceConfig            `yaml:"resources"`
-	TcpServerConfig   socket.TCPServerConfig    `yaml:"tcpServerConfig"`
 }
 
 const LOG_TAG = "Config"
