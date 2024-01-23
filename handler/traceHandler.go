@@ -14,8 +14,8 @@ import (
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
+	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto"
 	zkUtilsEnrichedSpan "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
-	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -46,17 +46,11 @@ type TraceHandler struct {
 	factory                      stores.StoreFactory
 }
 
-func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
+func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory, traceBadgerHandler *badger.TraceBadgerHandler) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := redis2.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
-		return nil, err
-	}
-
-	traceBadgerHandler, err := badger.NewTracesBadgerHandler(config)
-	if err != nil {
-		logger.Error(traceLogTag, "Error while creating badger handler:", err)
 		return nil, err
 	}
 
