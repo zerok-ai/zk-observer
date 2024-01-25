@@ -70,7 +70,7 @@ func main() {
 	logger.Debug(mainLogTag, "Starting grpc server.")
 
 	//Creating grpc server
-	listener, err := net.Listen("tcp", ":4317")
+	listener, err := net.Listen("tcp", ":4318")
 	if err != nil {
 		logger.Error(mainLogTag, "Error while creating grpc listener:", err)
 		return
