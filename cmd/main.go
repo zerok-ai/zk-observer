@@ -4,13 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
-	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -29,11 +27,6 @@ var podIp = os.Getenv("POD_IP")
 
 type Args struct {
 	ConfigPath string
-}
-
-// register collector method
-func init() {
-	prometheus.MustRegister(promMetrics.BadgerCollector(""))
 }
 
 func main() {
@@ -77,11 +70,6 @@ func main() {
 		DisablePathCorrection: true,
 		LogLevel:              otlpConfig.Logs.Level,
 	})
-
-	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
-
-	// Define a route to expose expvar data
-	app.Get("/debug/vars", iris.FromStd(http.DefaultServeMux))
 
 	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)
@@ -209,7 +197,6 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 		promMetrics.TotalTracesSpanDataRequestedFromReceiver.WithLabelValues(podIp).Add(float64(len(inputList)))
 
 		data, err2 := traceHandler.GetBulkDataFromBadgerForPrefix(inputList)
-		logger.Info(mainLogTag, fmt.Sprintf("Trace span Data from badger for inputList: %s is %s", inputList, data))
 		if err2 != nil {
 			promMetrics.TotalFetchRequestsFromSMError.WithLabelValues(podIp).Inc()
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err2)
@@ -217,9 +204,21 @@ func configureBadgerGetStreamAPI(app *iris.Application, traceHandler *handler.Tr
 			return
 		}
 		ctx.StatusCode(iris.StatusOK)
-		err := ctx.JSON(data)
+		//jsonData, err := json.Marshal(data)
+		//if err != nil {
+		//	logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err)
+		//	return
+		//}
+
+		protoData, err := proto.Marshal(data)
 		if err != nil {
 			promMetrics.TotalFetchRequestsFromSMError.WithLabelValues(podIp).Inc()
+			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for tracePrefixList: %s", inputList), err)
+			return
+		}
+		ctx.ContentType("application/octet-stream")
+		_, err = ctx.Write(protoData)
+		if err != nil {
 			logger.Error(mainLogTag, fmt.Sprintf("Unable to fetch data from badger for trace prefix list: %s", inputList), err)
 			return
 		}

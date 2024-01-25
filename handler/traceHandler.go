@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
@@ -16,6 +15,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
 	zkUtilsEnrichedSpan "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -28,8 +28,6 @@ import (
 var traceLogTag = "TraceHandler"
 var delimiter = "__"
 var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
-
-var EvaluateZeroKSpan = true
 
 type SpanForStorage interface {
 	zkUtilsEnrichedSpan.OtelEnrichedRawSpan | model.OTelSpanDetails
@@ -227,75 +225,54 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				processedSpanCount++
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
-				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 				if traceId == "" || spanId == "" {
 					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
 					continue
 				}
 
-				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
-				logger.Debug(traceLogTag, "span schema version:", schemaVersion)
 				var resourceIp string
+				spanAttributes := utils.ConvertKVListToMap(span.Attributes)
+				spanJSON := utils.ObjectToInterfaceMap(span)
+				spanJSON[common.OTelLatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
+				spanJSON[common.OTelSpanAttrKey] = spanAttributes
+				spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
+				spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
+				spanJSON[common.OTelSchemaVersionKey] = schemaVersion
+				spanEvents, errorFlag := th.processOTelSpanEvents(span)
+				spanJSON[common.OTelSpanEventsKey] = spanEvents
+				spanJSON[common.OTelSpanErrorKey] = errorFlag
+				// Evaluating and storing data in Otel span format.
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 
-				//TODO: Make this Async.
-				if EvaluateZeroKSpan == false {
-					// Evaluating and storing data in zk span format.
-					spanDetails := th.generateSpanDetails(span, schemaVersion, resourceAttrMap, resourceAttrHash, scopeAttrMap, scopeAttrHash)
-					spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
+				spanKind := model.NewFromOTelSpan(span.Kind)
+				sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
+				resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
 
-					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap)
-					spanDetails.WorkloadIdList = workloadIds
-					spanDetails.GroupBy = groupBy
-
-					resourceIp = utils.GetResourceIp(spanDetails.SpanKind, *spanDetails.SourceIp, *spanDetails.DestIp)
-
-					th.addZkSpanToTraceStore(key, spanDetails)
-				} else {
-					spanAttributes := utils.ConvertKVListToMap(span.Attributes)
-					spanJSON := utils.ObjectToInterfaceMap(span)
-					spanJSON[common.OTelLatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
-					spanJSON[common.OTelSpanAttrKey] = spanAttributes
-					spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
-					spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
-					spanJSON[common.OTelSchemaVersionKey] = schemaVersion
-					spanEvents, errorFlag := th.processOTelSpanEvents(span)
-					spanJSON[common.OTelSpanEventsKey] = spanEvents
-					spanJSON[common.OTelSpanErrorKey] = errorFlag
-					// Evaluating and storing data in Otel span format.
-					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
-
-					spanKind := model.NewFromOTelSpan(span.Kind)
-					sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
-					resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
-
-					span.Attributes = nil
-					span.Events = nil
-					enrichedRawSpan := zkUtilsEnrichedSpan.OtelEnrichedRawSpan{
-						Span:                   span,
-						SpanEvents:             spanEvents,
-						SpanAttributes:         spanAttributes,
-						ResourceAttributesHash: resourceAttrHash,
-						ScopeAttributesHash:    scopeAttrHash,
-						WorkloadIdList:         workloadIds,
-						GroupBy:                groupBy,
-					}
-
-					// TODO: uncomment below line when enabling proto and update signature of addEnrichedSpanToTraceStore
-					//spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
-					//th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
-					th.addEnrichedSpanToTraceStore(key, enrichedRawSpan)
+				span.Attributes = nil
+				span.Events = nil
+				enrichedRawSpan := zkUtilsEnrichedSpan.OtelEnrichedRawSpan{
+					Span:                   span,
+					SpanEvents:             spanEvents,
+					SpanAttributes:         spanAttributes,
+					ResourceAttributesHash: resourceAttrHash,
+					ScopeAttributesHash:    scopeAttrHash,
+					WorkloadIdList:         workloadIds,
+					GroupBy:                groupBy,
 				}
+
+				spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
+				th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error: ", err)
 				}
 			}
 		}
@@ -410,10 +387,16 @@ func (th *TraceHandler) deleteFromTraceStore(keysToDelete []string) {
 	}
 }
 
-func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails zkUtilsEnrichedSpan.OtelEnrichedRawSpan) {
+func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkUtilsOtel.OtelEnrichedRawSpanForProto) {
 	th.traceStoreMutex.Lock()
 	defer th.traceStoreMutex.Unlock()
-	th.traceStore.Store(key, spanDetails)
+	spanProto, err := proto.Marshal(spanDetails)
+	if err != nil {
+		logger.ErrorF(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, err)
+		return
+	}
+
+	th.traceStore.Store(key, spanProto)
 }
 
 func (th *TraceHandler) addZkSpanToTraceStore(key string, spanDetails model.OTelSpanDetails) {
@@ -443,14 +426,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 		traceIDStr := ids[0]
 		spanIDStr := ids[1]
 
-		//spanProto, err := proto.Marshal(value.(proto.Message))
-		spanProto, err := json.Marshal(value)
-		if err != nil {
-			logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanIDStr, err)
-			return true
-		}
-
-		err = th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, string(spanProto))
+		err := th.traceBadgerHandler.PutTraceData(traceIDStr, spanIDStr, value.([]byte))
 		if err != nil {
 			logger.Debug(traceLogTag, "Error while putting trace data to badger ", err)
 			// Returning false to stop the iteration
@@ -470,6 +446,25 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 	return keysToDelete
 }
 
-func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (map[string]string, error) {
-	return th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zkUtilsOtel.BadgerResponseList, error) {
+	traceToDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+	var resp *zkUtilsOtel.BadgerResponseList
+	if err != nil {
+		logger.Error(traceLogTag, "Error while getting data from badger for prefix list ", prefixList, " error is ", err)
+		return resp, err
+	}
+
+	if len(traceToDataMap) > 0 {
+		resp = zkUtilsCommonModel.ToPtr(zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0)})
+	}
+
+	for k, v := range traceToDataMap {
+		var d zkUtilsOtel.BadgerResponse
+		d.Key = k
+		d.Value = v
+		resp.ResponseList = append(resp.ResponseList, &d)
+	}
+
+	return resp, nil
+
 }

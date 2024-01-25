@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
-	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -234,7 +233,6 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		logger.Debug(spanFilteringLogTag, "No workloads found for scenario: ", scenario.Title)
 		return satisfiedWorkLoadIds
 	}
-	logger.Debug(spanFilteringLogTag, "Workloads found for scenario: ", scenario.Title, " workloads: ", workloads)
 	for id, workload := range *workloads {
 		// Check if span is to be evaluated for this workload
 		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap) {
@@ -247,11 +245,10 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, workload.Protocol)
 		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, spanDetailsMap)
 		if err != nil {
-			logger.Warn(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
+			logger.Info(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
 			continue
 		}
 		if value {
-			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
 			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
@@ -279,8 +276,6 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		traceId := workLoadTraceId.TraceId
 
 		redisKey := workloadId + "_latest"
-		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
-		//logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
 		err := h.redisHandler.SAddPipeline(redisKey, traceId, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
 		if err != nil {
 			logger.Error(spanFilteringLogTag, "Error while setting workload data: ", err)
