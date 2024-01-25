@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/zerok-ai/zk-otlp-receiver/common"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
+	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/utils"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"

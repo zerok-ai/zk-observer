@@ -9,6 +9,7 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
+	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
 	"github.com/zerok-ai/zk-otlp-receiver/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
