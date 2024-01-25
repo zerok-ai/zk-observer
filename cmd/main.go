@@ -12,14 +12,10 @@ import (
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
-	"github.com/zerok-ai/zk-otlp-receiver/server"
 	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
-	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	"google.golang.org/grpc"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -70,14 +66,14 @@ func main() {
 	logger.Debug(mainLogTag, "Starting grpc server.")
 
 	//Creating grpc server
-	listener, err := net.Listen("tcp", ":4318")
-	if err != nil {
-		logger.Error(mainLogTag, "Error while creating grpc listener:", err)
-		return
-	}
-	s := grpc.NewServer()
-	pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
-	go s.Serve(listener)
+	//listener, err := net.Listen("tcp", ":4317")
+	//if err != nil {
+	//	logger.Error(mainLogTag, "Error while creating grpc listener:", err)
+	//	return
+	//}
+	//s := grpc.NewServer()
+	//pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
+	//go s.Serve(listener)
 
 	logger.Debug(mainLogTag, "Started grpc server.")
 
