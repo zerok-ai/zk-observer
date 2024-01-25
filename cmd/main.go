@@ -7,6 +7,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/kataras/iris/v12"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zerok-ai/zk-otlp-receiver/config"
 	"github.com/zerok-ai/zk-otlp-receiver/handler"
 	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
@@ -28,6 +30,11 @@ var podIp = os.Getenv("POD_IP")
 
 type Args struct {
 	ConfigPath string
+}
+
+// register collector method
+func init() {
+	prometheus.MustRegister(promMetrics.BadgerCollector(""))
 }
 
 func main() {
@@ -72,6 +79,10 @@ func main() {
 		LogLevel:              otlpConfig.Logs.Level,
 	})
 
+	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
+
+	// Define a route to expose expvar data
+	app.Get("/debug/vars", iris.FromStd(http.DefaultServeMux))
 	app.Get("/healthz", func(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusOK)
 	})
