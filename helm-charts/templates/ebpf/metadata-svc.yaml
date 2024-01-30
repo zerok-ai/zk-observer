@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-ebpf-metadata-svc
+  labels:
+    app: zk-observer
+    component: vizier
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.metadataSvc.type }}
+  selector:
+    app: zk-observer
+    component: vizier
+    name: zk-ebpf-metadata
+  ports:
+	{{- .Values.metadataSvc.ports | toYaml | nindent 2 -}}

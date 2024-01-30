@@ -1,4 +1,4 @@
-module github.com/zerok-ai/zk-otlp-receiver
+module github.com/zerok-ai/zk-observer
 
 go 1.21
 
@@ -8,9 +8,8 @@ require (
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240118102307-e86ee02b4630
+	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240129091613-cc2d1629cf6c
 	go.opentelemetry.io/proto/otlp v1.0.0
-	google.golang.org/grpc v1.58.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
@@ -99,6 +98,7 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

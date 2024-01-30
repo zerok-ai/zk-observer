@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"github.com/zerok-ai/zk-otlp-receiver/handler"
+	"github.com/zerok-ai/zk-observer/handler"
 	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
 

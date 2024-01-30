@@ -2,14 +2,15 @@ package handler
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
-	redis2 "github.com/zerok-ai/zk-otlp-receiver/stores/redis"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	"github.com/zerok-ai/zk-observer/common"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/model"
+	"github.com/zerok-ai/zk-observer/stores/badger"
+	redis2 "github.com/zerok-ai/zk-observer/stores/redis"
+	"github.com/zerok-ai/zk-observer/utils"
 	_ "github.com/zerok-ai/zk-utils-go/common"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
@@ -472,24 +473,55 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 }
 
 func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zkUtilsOtel.BadgerResponseList, error) {
-	traceToDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
-	var resp *zkUtilsOtel.BadgerResponseList
+
+	//Getting saved from badger for the given prefix list.
+	traceDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+
+	//Initializing response to empty value.
+	response := zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0), EbpfResponseList: make([]*zkUtilsOtel.BadgerEbpfResponse, 0)}
+
 	if err != nil {
 		logger.Error(traceLogTag, "Error while getting data from badger for prefix list ", prefixList, " error is ", err)
-		return resp, err
+		return &response, err
 	}
 
-	if len(traceToDataMap) > 0 {
-		resp = zkUtilsCommonModel.ToPtr(zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0)})
+	//Scenario where no data is found for the given prefix list.
+	if traceDataMap == nil {
+		return &response, nil
 	}
 
-	for k, v := range traceToDataMap {
-		var d zkUtilsOtel.BadgerResponse
-		d.Key = k
-		d.Value = v
-		resp.ResponseList = append(resp.ResponseList, &d)
+	//TraceDataMap contain a non-nil value here.
+	//The values can contain either otlp data or ebpf data.
+	//We need to differentiate between the two using the key.
+	for key, value := range *traceDataMap {
+
+		//Checking for ebpf scenario
+		if strings.Contains(key, "-e-") {
+			var d zkUtilsOtel.EbpfEntryDataForSpan
+			err := proto.Unmarshal([]byte(value), &d)
+			if err != nil {
+				logger.Error(traceLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
+				continue
+			}
+			response.EbpfResponseList = append(response.EbpfResponseList, &zkUtilsOtel.BadgerEbpfResponse{
+				Key:   key,
+				Value: &d,
+			})
+		} else {
+			//For now assuming that else scenario is otlp data.
+			var d zkUtilsOtel.OtelEnrichedRawSpanForProto
+			err := proto.Unmarshal([]byte(value), &d)
+			if err != nil {
+				logger.Error(traceLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
+				continue
+			}
+			response.ResponseList = append(response.ResponseList, &zkUtilsOtel.BadgerResponse{
+				Key:   key,
+				Value: &d,
+			})
+		}
+
 	}
 
-	return resp, nil
-
+	return &response, nil
 }

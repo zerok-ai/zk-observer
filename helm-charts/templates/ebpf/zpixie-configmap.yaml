@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zpixie-configmap
+  labels:
+    app: zk-observer
+    component: vizier
+  {{- include "helm-charts.labels" . | nindent 4 }}
+data:
+  zpixie-configmap.yaml: {{ .Values.zpixieConfigmap.zpixieConfigmapYaml | toYaml
+    | indent 1 }}

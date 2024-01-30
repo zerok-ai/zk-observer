@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-ebpf-nats-mgmt
+  labels:
+    app: zk-observer
+    name: zk-ebpf-nats
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.plNatsMgmt.type }}
+  selector:
+    app: zk-observer
+    name: zk-ebpf-nats
+  ports:
+	{{- .Values.plNatsMgmt.ports | toYaml | nindent 2 -}}

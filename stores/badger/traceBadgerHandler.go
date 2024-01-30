@@ -3,10 +3,8 @@ package badger
 import (
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-observer/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
-	__ "github.com/zerok-ai/zk-utils-go/proto"
 	"github.com/zerok-ai/zk-utils-go/storage/badger"
 	"time"
 )
@@ -36,13 +34,13 @@ func NewTracesBadgerHandler(otlpConfig *config.OtlpConfig) (*TraceBadgerHandler,
 }
 
 func (h *TraceBadgerHandler) PutTraceData(traceId string, spanId string, spanProto []byte) error {
-	key := traceId + "-" + spanId
+	key := traceId + "-o-" + spanId
 	return h.PutData(key, spanProto)
 }
 
 // PutEbpfData Method to set ebpf data in badger
 func (h *TraceBadgerHandler) PutEbpfData(traceId string, spanId string, ebpfData []byte) error {
-	key := traceId + "-e" + "-" + spanId
+	key := traceId + "-e-" + spanId
 	return h.PutData(key, ebpfData)
 }
 
@@ -60,30 +58,21 @@ func (h *TraceBadgerHandler) SyncPipeline() {
 	h.badgerHandler.StartCompaction()
 }
 
-func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (map[string]*__.OtelEnrichedRawSpanForProto, error) {
+// GetBulkDataForPrefixList Function to get badger data for a list of prefixes.
+func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (*map[string]string, error) {
 	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given tracePrefixList: %v", prefixList))
-	prefix, err := h.badgerHandler.BulkGetForPrefix(prefixList)
+	badgerDataMap, err := h.badgerHandler.BulkGetForPrefix(prefixList)
+
 	if err != nil {
 		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given tracePrefixList: %v", prefixList), err)
 		return nil, err
 	}
-	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", prefix))
 
-	finalResp := make(map[string]*__.OtelEnrichedRawSpanForProto)
-	for k, value := range prefix {
-		var d __.OtelEnrichedRawSpanForProto
-		err := proto.Unmarshal([]byte(value), &d)
-		if err != nil {
-			logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
-			continue
-		}
-		finalResp[k] = &d
-	}
-
-	return finalResp, nil
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", badgerDataMap))
+	return &badgerDataMap, nil
 }
 
-// Function to get badger data for a key
+// GetData Function to get badger data for a key
 func (h *TraceBadgerHandler) GetData(key string) (string, error) {
 	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given key: %s", key))
 	value, err := h.badgerHandler.Get(key)
@@ -93,4 +82,15 @@ func (h *TraceBadgerHandler) GetData(key string) (string, error) {
 	}
 	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given key: %s", key))
 	return value, nil
+}
+
+func (h *TraceBadgerHandler) PrefixGet(prefix string) (map[string]string, error) {
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given prefix: %s", prefix))
+	prefixMap, err := h.badgerHandler.BulkGetForPrefix([]string{prefix})
+	if err != nil {
+		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given prefix: %s", prefix), err)
+		return nil, err
+	}
+	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given prefix: %s", prefix))
+	return prefixMap, nil
 }

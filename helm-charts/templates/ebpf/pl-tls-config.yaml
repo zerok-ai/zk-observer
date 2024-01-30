@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pl-tls-config
+  labels:
+    app: zk-observer
+    component: vizier
+    vizier-name: pixie
+  {{- include "helm-charts.labels" . | nindent 4 }}
+  annotations:
+    vizier-name: pixie
+data:
+  PL_CLIENT_TLS_CERT: {{ .Values.plTlsConfig.plClientTlsCert | quote }}
+  PL_CLIENT_TLS_KEY: {{ .Values.plTlsConfig.plClientTlsKey | quote }}
+  PL_SERVER_TLS_CERT: {{ .Values.plTlsConfig.plServerTlsCert | quote }}
+  PL_SERVER_TLS_KEY: {{ .Values.plTlsConfig.plServerTlsKey | quote }}
+  PL_TLS_CA_CERT: {{ .Values.plTlsConfig.plTlsCaCert | quote }}

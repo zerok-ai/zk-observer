@@ -1,73 +1,203 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: zk-otlp-receiver
+  name: zk-observer
   labels:
-  {{- include "helm-charts.labels" . | nindent 4 }}
+    app: zk-observer
+    component: vizier
+    {{- include "helm-charts.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: zk-otlp-receiver
-    {{- include "helm-charts.selectorLabels" . | nindent 6 }}
+      app: zk-observer
+      component: vizier
+      {{- include "helm-charts.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: zk-otlp-receiver
-      {{- include "helm-charts.selectorLabels" . | nindent 8 }}
+        app: zk-observer
+        component: vizier
+        plane: data
+        {{- include "helm-charts.selectorLabels" . | nindent 8 }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: Exists
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: Exists
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
       containers:
-      - env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        - name: NODE_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: "ZK_REDIS_PASSWORD"
-          valueFrom:
-            secretKeyRef:
-              name: "redis"
-              key: "redis-password"
-        - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
-          valueFrom:
-            configMapKeyRef:
-              name: "zk-redis-config"
-              key: "redisHost"
-        image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: zk-otlp-receiver
-#        command: ["/bin/sh"]
-#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver-arm64 -- -c /zk/config/config.yaml"]
-        ports:
-        - containerPort: 8147
-        resources: {}
-        volumeMounts:
-        - mountPath: /zk/config
-          name: otlp-config
-        - mountPath: /zk/badger-db
-          name: badger-data
+        - name: zk-observer
+          image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: KUBERNETES_CLUSTER_DOMAIN
+            value: {{ quote .Values.kubernetesClusterDomain }}
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: "ZK_REDIS_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: "redis"
+                key: "redis-password"
+          - name: "ZK_REDIS_HOST" # Setting Redis password from Secret
+            valueFrom:
+              configMapKeyRef:
+                name: "zk-redis-config"
+                key: "redisHost"
+          ports:
+            - containerPort: 8147
+          resources: {}
+          volumeMounts:
+            - mountPath: /zk/config
+              name: otlp-config
+            - mountPath: /zk/badger-db
+              name: badger-data
+        - name: pem
+          image: {{ .Values.pem.pem.image.repository }}:{{ .Values.pem.pem.image.tag | default .Chart.AppVersion }}
+          securityContext: {{- toYaml .Values.pem.pem.containerSecurityContext | nindent 12 }}
+          imagePullPolicy: {{ .Values.pem.pem.imagePullPolicy }}
+          env:
+          - name: TCMALLOC_SAMPLE_PARAMETER
+            value: {{ quote .Values.pem.pem.env.tcmallocSampleParameter }}
+          - name: PL_CLIENT_TLS_CERT
+            value: {{ quote .Values.pem.pem.env.plClientTlsCert }}
+          - name: PL_CLIENT_TLS_KEY
+            value: {{ quote .Values.pem.pem.env.plClientTlsKey }}
+          - name: PL_TLS_CA_CERT
+            value: {{ quote .Values.pem.pem.env.plTlsCaCert }}
+          - name: PL_DISABLE_SSL
+            value: {{ quote .Values.pem.pem.env.plDisableSsl }}
+          - name: PL_HOST_PATH
+            value: {{ quote .Values.pem.pem.env.plHostPath }}
+          - name: PL_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: PL_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: PL_HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: PL_JWT_SIGNING_KEY
+            valueFrom:
+              secretKeyRef:
+                key: jwt-signing-key
+                name: pl-cluster-secrets
+          - name: PL_REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: redis-password
+                name: redis
+          - name: PL_REDIS_HOST
+            valueFrom:
+              configMapKeyRef:
+                key: redisHost
+                name: zk-redis-config
+          - name: PL_VIZIER_ID
+            valueFrom:
+              secretKeyRef:
+                key: cluster-id
+                name: pl-cluster-secrets
+                optional: true
+          - name: PL_VIZIER_NAME
+            valueFrom:
+              secretKeyRef:
+                key: cluster-name
+                name: pl-cluster-secrets
+                optional: true
+          - name: PL_CLOCK_CONVERTER
+            value: {{ quote .Values.pem.pem.env.plClockConverter }}
+          - name: KUBERNETES_CLUSTER_DOMAIN
+            value: {{ quote .Values.kubernetesClusterDomain }}
+          volumeMounts:
+          - mountPath: /host
+            name: host-root
+            readOnly: true
+          - mountPath: /sys
+            name: sys
+            readOnly: true
+          - mountPath: /certs
+            name: certs
+          - mountPath: /opt/zk-client-db-configmap.yaml
+            name: zk-client-db-configmap
+            subPath: zk-client-db-configmap.yaml
+          - mountPath: /opt/zpixie-configmap.yaml
+            name: zpixie-configmap
+            subPath: zpixie-configmap.yaml
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 10
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
       volumes:
       - configMap:
-          name: zk-otlp-receiver
+          name: zk-observer
         name: otlp-config
       - name: badger-data
         emptyDir: {}
+      - name: collector-config
+        configMap:
+          name: zk-socket-server
+      - hostPath:
+          path: /
+          type: Directory
+        name: host-root
+      - hostPath:
+          path: /sys
+          type: Directory
+        name: sys
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - configMap:
+          name: zk-client-db-configmap
+        name: zk-client-db-configmap
+      - configMap:
+          name: zpixie-configmap
+        name: zpixie-configmap
 {{/*        persistentVolumeClaim:*/}}
 {{/*          claimName: zerok-badger-pvc*/}}
 {{/*          readOnly: false*/}}

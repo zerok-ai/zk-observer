@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/zerok-ai/zk-otlp-receiver/common"
+	"github.com/zerok-ai/zk-observer/common"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/functions"

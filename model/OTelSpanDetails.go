@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/zerok-ai/zk-otlp-receiver/common"
+	"github.com/zerok-ai/zk-observer/common"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 )
 

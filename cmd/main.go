@@ -9,10 +9,10 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/handler"
-	promMetrics "github.com/zerok-ai/zk-otlp-receiver/metrics"
-	"github.com/zerok-ai/zk-otlp-receiver/stores/badger"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/handler"
+	promMetrics "github.com/zerok-ai/zk-observer/metrics"
+	"github.com/zerok-ai/zk-observer/stores/badger"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -86,6 +86,19 @@ func main() {
 	})
 
 	app.Get("/metrics", iris.FromStd(promhttp.Handler()))
+
+	app.Get("/prefixget", func(ctx iris.Context) {
+		//Get query param from iris context
+		prefix := ctx.URLParam("prefix")
+		valuesMap, err := traceBadgerHandler.PrefixGet(prefix)
+		//log error
+		if err != nil {
+			logger.Error(mainLogTag, "Error while getting data for prefix from badger:", err)
+			return
+		}
+		//log value
+		logger.Info(mainLogTag, fmt.Sprintf("Value for prefix %s is %s", prefix, valuesMap))
+	})
 
 	app.Get("/getvar", func(ctx iris.Context) {
 		//Get query param from iris context
