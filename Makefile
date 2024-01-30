@@ -3,10 +3,10 @@ PROJECT_ID = zerok-dev
 REPOSITORY = stage
 
 VERSION = devclient04
-IMAGE = zk-otlp-receiver
+IMAGE = zk-observer
 ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
-NAME = zk-otlp-receiver
+NAME = zk-observer
 
 sync:
 	go get -v ./...
@@ -19,5 +19,5 @@ buildAndPush: build
 	docker push ${IMG_VER}
 
 ci-cd-build: sync
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o bin/$(NAME)-amd64 cmd/main.go
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -gcflags "all=-N -l" -v -o bin/$(NAME)-arm64 cmd/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/$(NAME)-amd64 cmd/main.go
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/$(NAME)-arm64 cmd/main.go

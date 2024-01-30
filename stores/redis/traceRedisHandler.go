@@ -2,7 +2,7 @@ package redis
 
 import (
 	"context"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-observer/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"os"

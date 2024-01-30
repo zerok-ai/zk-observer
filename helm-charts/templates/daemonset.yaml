@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: zk-otlp-receiver
+  name: zk-observer
   labels:
   {{- include "helm-charts.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: zk-otlp-receiver
+      app: zk-observer
     {{- include "helm-charts.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: zk-otlp-receiver
+        app: zk-observer
       {{- include "helm-charts.selectorLabels" . | nindent 8 }}
     spec:
       containers:
@@ -51,9 +51,9 @@ spec:
               key: "redisHost"
         image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: zk-otlp-receiver
+        name: zk-observer
 #        command: ["/bin/sh"]
-#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-otlp-receiver-arm64 -- -c /zk/config/config.yaml"]
+#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-observer-arm64 -- -c /zk/config/config.yaml"]
         ports:
         - containerPort: 8147
         resources: {}
@@ -64,7 +64,7 @@ spec:
           name: badger-data
       volumes:
       - configMap:
-          name: zk-otlp-receiver
+          name: zk-observer
         name: otlp-config
       - name: badger-data
         emptyDir: {}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
+	"github.com/zerok-ai/zk-observer/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	__ "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	"github.com/zerok-ai/zk-utils-go/storage/badger"

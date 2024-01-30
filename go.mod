@@ -1,4 +1,4 @@
-module github.com/zerok-ai/zk-otlp-receiver
+module github.com/zerok-ai/zk-observer
 
 go 1.21
 

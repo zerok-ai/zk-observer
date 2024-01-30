@@ -3,8 +3,8 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/model"
 	zkcommon "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
