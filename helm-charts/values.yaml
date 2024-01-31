@@ -4,7 +4,7 @@ global:
 replicaCount: 1
 
 image:
-  repo: zk-otlp-receiver
+  repo: zk-observer
   tag: "latest"
   pullPolicy: Always
 
