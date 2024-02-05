@@ -107,8 +107,6 @@ func (th *TraceHandler) ServeHTTP(ctx iris.Context) {
 		return
 	}
 
-	//logger.Debug(traceLogTag, string(body))
-
 	// Unmarshal the protobuf message from the request body
 	var traceData tracev1.TracesData
 	err = proto.Unmarshal(body, &traceData)
