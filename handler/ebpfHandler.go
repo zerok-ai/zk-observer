@@ -44,15 +44,15 @@ func CreateAndStartEbpfHandler(config *config.OtlpConfig, traceBadgerHandler *ba
 
 func (handler *EbpfHandler) HandleData(data []byte) string {
 
-	//Unmarshal the data into a map
+	errorMessage := "Error while saving data into badger."
+
+	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
 	err := json.Unmarshal(data, &ebpfDataResponse)
 	if err != nil {
 		logger.Debug(ebpfHandlerLogTag, "error unmarshalling data into map ", err)
-		return ""
+		return errorMessage
 	}
-
-	//TODO: Temporarily changing the unmarshalling code to json for testing. Need to change it to proto later.
 
 	//Extract trace id and span id
 	traceId := ebpfDataResponse.TraceID
@@ -79,8 +79,8 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	err = handler.traceBadgerHandler.PutEbpfData(traceId, spanId, ebpfDataForSpanBytes)
 	if err != nil {
 		logger.Debug(ebpfHandlerLogTag, "Error while saving data into badger with key: ", traceId, spanId, err)
-		return ""
+		return errorMessage
 	}
 
-	return "Server received: " + string(data[:])
+	return "Success"
 }

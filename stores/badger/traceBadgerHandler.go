@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// TODO: This should be renamed to badger handler.
 var traceBadgerHandlerLogTag = "TraceBadgerHandler"
 
 type TraceBadgerHandler struct {
