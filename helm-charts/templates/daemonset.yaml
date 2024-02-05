@@ -52,8 +52,6 @@ spec:
         image: {{.Values.global.dockerBase}}/{{.Values.image.repo}}:{{.Values.image.tag}}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: zk-observer
-#        command: ["/bin/sh"]
-#        args: ["-c", "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-observer-arm64 -- -c /zk/config/config.yaml"]
         ports:
         - containerPort: 8147
         resources: {}
@@ -68,6 +66,3 @@ spec:
         name: otlp-config
       - name: badger-data
         emptyDir: {}
-{{/*        persistentVolumeClaim:*/}}
-{{/*          claimName: zerok-badger-pvc*/}}
-{{/*          readOnly: false*/}}

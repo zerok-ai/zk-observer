@@ -1,7 +1,6 @@
 FROM alpine:latest
 WORKDIR /zk
 
-# base name of the executable e.g. "zk-scenario-manager"
 ENV exeBaseName="zk-observer"
 
 # full path to the all the executables
@@ -16,9 +15,5 @@ COPY *"bin/$exeARM64" .
 COPY app-start.sh .
 RUN chmod +x app-start.sh
 
-# install delve
-#RUN apk add delve
-
 # call the start script
 CMD ["sh","-c","./app-start.sh --amd64 ${exeAMD64} --arm64 ${exeARM64} -c config/config.yaml"]
-#CMD ["sh","-c","dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /zk/zk-observer-amd64 -- -c /zk/config/config.yaml"]

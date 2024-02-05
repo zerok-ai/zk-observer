@@ -4,17 +4,6 @@ on:
     tags: #r/<ENVIRONMENT>/<DOCKER-TAG-OR-VERSION>
       - 'prod/**'
 
-#  # Uncomment the following code for testing
-#  workflow_dispatch:
-#    inputs:
-#      DOCKER_TAG:
-#        description: 'Docker Image Tag'
-#        required: true
-#        default: '0.0.9-helmtest'
-#      ENV:
-#        description: 'ENV'
-#        required: true
-#        default: 'poc'
 jobs:
   init:
     uses: zerok-ai/zk-git-actions/.github/workflows/zk-prod-init.yml@main
@@ -24,27 +13,12 @@ jobs:
       DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
 
   build-push:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push-multiarch.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/build-push-dockerhub.yml@main
     with:
       VERSION: ${{ needs.init.outputs.VERSION }}
       ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
       DOCKER_IDENTIFIER: ${{ needs.init.outputs.ENVIRONMENT }}
-      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
     secrets:
-      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_PROD }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     needs: init
-
-  # build helm charts and publish to helm repository
-  helm-push:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-helm-publish.yml@main
-    with:
-      HELM_VERSION: ${{ needs.init.outputs.VERSION }}
-      ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
-      DOCKER_IDENTIFIER: ${{ needs.init.outputs.ENVIRONMENT }}
-      HELM_BUCKET_NAME: ${{ needs.init.outputs.HELM_BUCKET_NAME }}
-      HELM_BUCKET_URL: ${{ needs.init.outputs.HELM_BUCKET_URL }}
-      PROJECT_ID: ${{ needs.init.outputs.PROJECT_ID }}
-    secrets:
-      AWS_ACCESS_ID: ${{ secrets.AWS_ACCESS_ID }}
-      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-    needs: [init,build-push]
