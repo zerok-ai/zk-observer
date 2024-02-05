@@ -50,7 +50,6 @@ func (h *TraceBadgerHandler) PutData(key string, data []byte) error {
 		logger.ErrorF(traceBadgerHandlerLogTag, "Error while setting trace details for key with error ", key, err)
 		return err
 	}
-	logger.InfoF(traceBadgerHandlerLogTag, "Value at %s successfully set.", key)
 	return nil
 }
 
@@ -58,17 +57,12 @@ func (h *TraceBadgerHandler) SyncPipeline() {
 	h.badgerHandler.StartCompaction()
 }
 
-// GetBulkDataForPrefixList Function to get badger data for a list of prefixes.
 func (h *TraceBadgerHandler) GetBulkDataForPrefixList(prefixList []string) (*map[string]string, error) {
-	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetching data form badger for given tracePrefixList: %v", prefixList))
 	badgerDataMap, err := h.badgerHandler.BulkGetForPrefix(prefixList)
-
 	if err != nil {
 		logger.Error(traceBadgerHandlerLogTag, fmt.Sprintf("Error while fetching data from badger for given tracePrefixList: %v", prefixList), err)
 		return nil, err
 	}
-
-	logger.Info(traceBadgerHandlerLogTag, fmt.Sprintf("Fetched data form badger for given tracePrefixList: %v", badgerDataMap))
 	return &badgerDataMap, nil
 }
 

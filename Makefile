@@ -7,13 +7,6 @@ IMAGE = zk-observer
 ART_Repo_URI = $(LOCATION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/$(IMAGE)
 IMG_VER = $(ART_Repo_URI):$(VERSION)
 NAME = zk-observer
-BUILDER_NAME = multi-platform-builder
-
-docker-build-push-multiarch: ci-cd-build
-	docker buildx rm ${BUILDER_NAME} || true
-	docker buildx create --use --platform=linux/arm64,linux/amd64 --name ${BUILDER_NAME}
-	docker buildx build --platform=linux/arm64,linux/amd64 --push --tag ${IMG_VER} .
-	docker buildx rm ${BUILDER_NAME}
 
 sync:
 	go get -v ./...

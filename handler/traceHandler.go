@@ -30,8 +30,6 @@ var traceLogTag = "TraceHandler"
 var delimiter = "__"
 var DefaultNodeJsSchemaUrl = "https://opentelemetry.io/schemas/1.7.0"
 
-var EvaluateZeroKSpan = true
-
 type SpanForStorage interface {
 	zkUtilsEnrichedSpan.OtelEnrichedRawSpan | model.OTelSpanDetails
 }
@@ -222,74 +220,54 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				processedSpanCount++
 				traceId := hex.EncodeToString(span.TraceId)
 				spanId := hex.EncodeToString(span.SpanId)
-				logger.Debug(traceLogTag, "traceId", traceId, " , spanId", spanId, " , spanKind ", span.Kind, " ,parentSpanId ", hex.EncodeToString(span.ParentSpanId))
 				if traceId == "" || spanId == "" {
 					logger.Warn(traceLogTag, "TraceId or SpanId is empty for span ", spanId)
 					continue
 				}
 
-				//Updating the spanDetails in traceStore.
 				key := traceId + delimiter + spanId
-				logger.Debug(traceLogTag, "span schema version:", schemaVersion)
 				var resourceIp string
+				spanAttributes := utils.ConvertKVListToMap(span.Attributes)
+				spanJSON := utils.ObjectToInterfaceMap(span)
+				spanJSON[common.OTelLatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
+				spanJSON[common.OTelSpanAttrKey] = spanAttributes
+				spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
+				spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
+				spanJSON[common.OTelSchemaVersionKey] = schemaVersion
+				spanEvents, errorFlag := th.processOTelSpanEvents(span)
+				spanJSON[common.OTelSpanEventsKey] = spanEvents
+				spanJSON[common.OTelSpanErrorKey] = errorFlag
+				// Evaluating and storing data in Otel span format.
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
 
-				//TODO: Make this Async.
-				if EvaluateZeroKSpan == false {
-					// Evaluating and storing data in zk span format.
-					spanDetails := th.generateSpanDetails(span, schemaVersion, resourceAttrMap, resourceAttrHash, scopeAttrMap, scopeAttrHash)
-					spanDetailsMap := utils.ObjectToInterfaceMap(spanDetails)
+				spanKind := model.NewFromOTelSpan(span.Kind)
+				sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
+				resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
 
-					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanDetailsMap)
-					spanDetails.WorkloadIdList = workloadIds
-					spanDetails.GroupBy = groupBy
-
-					resourceIp = utils.GetResourceIp(spanDetails.SpanKind, *spanDetails.SourceIp, *spanDetails.DestIp)
-
-					th.addZkSpanToTraceStore(key, spanDetails)
-				} else {
-					spanAttributes := utils.ConvertKVListToMap(span.Attributes)
-					spanJSON := utils.ObjectToInterfaceMap(span)
-					spanJSON[common.OTelLatencyNsKey] = span.EndTimeUnixNano - span.StartTimeUnixNano
-					spanJSON[common.OTelSpanAttrKey] = spanAttributes
-					spanJSON[common.OTelResourceAttrKey] = resourceAttrMap
-					spanJSON[common.OTelScopeAttrKey] = scopeAttrMap
-					spanJSON[common.OTelSchemaVersionKey] = schemaVersion
-					spanEvents, errorFlag := th.processOTelSpanEvents(span)
-					spanJSON[common.OTelSpanEventsKey] = spanEvents
-					spanJSON[common.OTelSpanErrorKey] = errorFlag
-					// Evaluating and storing data in Otel span format.
-					workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
-
-					spanKind := model.NewFromOTelSpan(span.Kind)
-					sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
-					resourceIp = utils.GetResourceIp(spanKind, sourceIP, destIP)
-
-					span.Attributes = nil
-					span.Events = nil
-					enrichedRawSpan := zkUtilsEnrichedSpan.OtelEnrichedRawSpan{
-						Span:                   span,
-						SpanEvents:             spanEvents,
-						SpanAttributes:         spanAttributes,
-						ResourceAttributesHash: resourceAttrHash,
-						ScopeAttributesHash:    scopeAttrHash,
-						WorkloadIdList:         workloadIds,
-						GroupBy:                groupBy,
-					}
-
-					spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
-					th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
-					//th.addEnrichedSpanToTraceStore(key, enrichedRawSpan)
+				span.Attributes = nil
+				span.Events = nil
+				enrichedRawSpan := zkUtilsEnrichedSpan.OtelEnrichedRawSpan{
+					Span:                   span,
+					SpanEvents:             spanEvents,
+					SpanAttributes:         spanAttributes,
+					ResourceAttributesHash: resourceAttrHash,
+					ScopeAttributesHash:    scopeAttrHash,
+					WorkloadIdList:         workloadIds,
+					GroupBy:                groupBy,
 				}
+
+				spanDetailsProtobufType := enrichedRawSpan.GetProtoEnrichedSpan()
+				th.addEnrichedSpanToTraceStore(key, spanDetailsProtobufType)
 				if err := th.resourceDetailsHandler.SyncResourceData(resourceIp, resourceAttrMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(resourceAttrHash, resourceInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving resource  data to redis for spanId ", spanId, " error: ", err)
 				}
 
 				if err := th.resourceAndScoperAttrHandler.SyncResourceAndScopeAttrData(scopeAttrHash, scopeInfoMap); err != nil {
-					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error is ", err)
+					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error: ", err)
 				}
 			}
 		}
@@ -409,18 +387,9 @@ func (th *TraceHandler) addEnrichedSpanToTraceStore(key string, spanDetails *zkU
 	defer th.traceStoreMutex.Unlock()
 	spanProto, err := proto.Marshal(spanDetails)
 	if err != nil {
-		logger.Debug(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, err)
+		logger.ErrorF(traceLogTag, "Error encoding SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, err)
 		return
 	}
-
-	x := zkUtilsOtel.OtelEnrichedRawSpanForProto{}
-	err = proto.Unmarshal(spanProto, &x)
-	if err != nil {
-		logger.Error(traceLogTag, "Error while unmarshalling span details for spanId ", spanDetails.Span.SpanId, " error is ", err)
-	}
-
-	logger.Info(traceLogTag, spanProto)
-	logger.Info(traceLogTag, "SpanDetails for spanID %s: %v\n", spanDetails.Span.SpanId, x)
 
 	th.traceStore.Store(key, spanProto)
 }
