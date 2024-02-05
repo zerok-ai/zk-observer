@@ -1,5 +1,5 @@
 global:
-  dockerBase: "us-west1-docker.pkg.dev/zerok-dev/stage/"
+  dockerBase: "zerokai"
 
 replicaCount: 1
 
