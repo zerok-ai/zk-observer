@@ -1,7 +1,7 @@
 # Zerok-Observer
 The Zerok Observer is part of the [Zerok System](https://zerok-ai.github.io/helm-charts/), which is a set of tools for observability in Kubernetes clusters. The Zerok System works along with the OpenTelemetry Operator. Check out these docs [add link here] to learn more about how Zerok can benefit you.
 
-The Zerok Observer is responsible for collecting traces from the OpenTelemetry collector and storing them in the badger DB. The observer also provides an API to query the traces stored in the badger DB. The Zerok Observer only stores traces that satisfy the probe conditions defined in the ZerokProbe CRD. The ZerokProbe CRD is managed by the [Zerok Operator](https://github.com/zerok-ai/zk-operator). 
+The Zerok Observer is responsible for collecting spans from the OpenTelemetry collector and storing them in the [badger DB](https://github.com/dgraph-io/badger). Zerok Observer is installed as a Daemonset, and each pod is responsible for collecting the spans emitted by the pods on that specific node. The Zerok Observer also provides an API to query the traces stored in the badger DB. The Zerok Observer stores information in Redis about spans that meet the probe conditions defined in the ZerokProbe CRD. The ZerokProbe CRD is managed by the [Zerok Operator](https://github.com/zerok-ai/zk-operator). 
 
 ## Prerequisites
 Zerok Operator needs to be installed in the cluster in zk-client namespace for the observer to work. You can refer to the [link](https://github.com/zerok-ai/zk-operator) for details about installing the Zerok Operator.
