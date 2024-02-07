@@ -11,8 +11,8 @@ ENV exeARM64="${exeBaseName}-arm64"
 RUN ls -al
 
 # copy the executables
-COPY *"bin/$exeAMD64" .
-COPY *"bin/$exeARM64" .
+COPY ./bin/$exeAMD64 .
+COPY ./bin/$exeARM64 .
 
 RUN ls -al
 
