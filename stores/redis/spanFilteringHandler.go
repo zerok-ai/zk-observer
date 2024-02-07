@@ -205,18 +205,7 @@ func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmode
 
 func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
 	workloadServiceName := workload.Service
-	spanAttributes, ok := spanDetailsMap[common.OTelSpanAttrKey]
-	if !ok || spanAttributes == nil {
-		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
-		return true
-	}
-	spanAttrMap := spanAttributes.(map[string]interface{})
-	spanServiceName, nsOk := spanAttrMap[common.OTelSpanAttrServiceNameKey]
-	if !nsOk || spanServiceName == "" {
-		logger.Warn(spanFilteringLogTag, "Service Name not found in resourceAttrMap, using service name='*'. "+
-			"Please set OTEL_SERVICE_NAME or `service.name` key in OTEL_RESOURCE_ATTRIBUTES env variable.")
-		spanServiceName = common.ScenarioWorkloadGenericServiceNameKey
-	}
+	spanServiceName := utils.GetServiceName(spanDetailsMap)
 
 	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
 		logger.Debug(spanFilteringLogTag, "NS::spanAttrMap: ", spanServiceName, "scenarioWorkload: ", workloadServiceName)

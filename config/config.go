@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+const LOG_TAG = "Config"
+
 type ExceptionConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 	BatchSize    int `yaml:"batchSize"`
@@ -34,6 +36,11 @@ type WorkloadConfig struct {
 	Ttl                  int `yaml:"ttl"`
 }
 
+type ServiceListConfig struct {
+	SyncDuration int `yaml:"syncDuration"`
+	BatchSize    int `yaml:"batchSize"`
+}
+
 type ScenarioConfig struct {
 	SyncDuration int `yaml:"syncDuration"`
 }
@@ -50,9 +57,8 @@ type OtlpConfig struct {
 	Scenario          ScenarioConfig            `yaml:"scenario"`
 	Exception         ExceptionConfig           `yaml:"exception"`
 	Resources         ResourceConfig            `yaml:"resources"`
+	Services          ServiceListConfig         `yaml:"services"`
 }
-
-const LOG_TAG = "Config"
 
 func CreateConfig(configPath string) *OtlpConfig {
 	var cfg OtlpConfig
