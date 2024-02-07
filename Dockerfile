@@ -7,14 +7,9 @@ ENV exeBaseName="zk-observer"
 ENV exeAMD64="${exeBaseName}-amd64"
 ENV exeARM64="${exeBaseName}-arm64"
 
-#List the contents of current directory
-RUN ls -al
-
 # copy the executables
 COPY ./bin/$exeAMD64 .
 COPY ./bin/$exeARM64 .
-
-RUN ls -al
 
 # copy the start script
 COPY app-start.sh .
