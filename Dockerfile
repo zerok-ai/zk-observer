@@ -8,8 +8,8 @@ ENV exeAMD64="${exeBaseName}-amd64"
 ENV exeARM64="${exeBaseName}-arm64"
 
 # copy the executables
-COPY *"bin/$exeAMD64" .
-COPY *"bin/$exeARM64" .
+COPY ./bin/$exeAMD64 .
+COPY ./bin/$exeARM64 .
 
 # copy the start script
 COPY app-start.sh .
