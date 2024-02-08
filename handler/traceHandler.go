@@ -285,7 +285,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				serviceName := utils.GetServiceName(spanAttributes)
 				if serviceName == common.ScenarioWorkloadGenericServiceNameKey {
 					logger.ErrorF(traceLogTag, "Service name could not be fetched for spanId %s, traceId %s", spanId, traceId)
-				} else if err := th.serviceListHandler.PutServiceListData(serviceName, span.Name); err != nil {
+				} else if err := th.serviceListHandler.PutServiceListData(common.ServiceListKey, serviceName); err != nil {
 					logger.Error(traceLogTag, "Error while saving service list data to redis for spanId ", spanId, " error: ", err)
 				}
 			}

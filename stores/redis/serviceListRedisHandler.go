@@ -32,6 +32,7 @@ func NewServiceListRedisHandler(otlpConfig *config.OtlpConfig) (*ServiceListRedi
 	}
 
 	handler.serviceList.Add(common.ScenarioWorkloadGenericServiceNameKey)
+	_ = handler.PutServiceListData(common.ServiceListKey, common.ScenarioWorkloadGenericServiceNameKey)
 	return handler, nil
 }
 
@@ -46,7 +47,8 @@ func (h *ServiceListRedisHandler) PutServiceListData(key string, serviceName str
 	}
 
 	h.serviceList.Add(serviceName)
-	if err := h.redisHandler.HSet(key, h.serviceList); err != nil {
+
+	if err := h.redisHandler.HSet(key, h.serviceList.GetAll()); err != nil {
 		logger.Error(ServiceListRedisHandlerLogTag, "Error while setting service name: %s, %v", serviceName, err)
 		return err
 	}
