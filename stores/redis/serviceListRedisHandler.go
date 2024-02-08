@@ -48,7 +48,7 @@ func (h *ServiceListRedisHandler) PutServiceListData(key string, serviceName str
 
 	h.serviceList.Add(serviceName)
 
-	if err := h.redisHandler.HSet(key, h.serviceList.GetAll()); err != nil {
+	if err := h.redisHandler.SAddPipeline(key, h.serviceList.GetAll(), -1); err != nil {
 		logger.Error(ServiceListRedisHandlerLogTag, "Error while setting service name: %s, %v", serviceName, err)
 		return err
 	}
