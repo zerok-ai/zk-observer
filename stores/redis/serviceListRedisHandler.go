@@ -6,6 +6,7 @@ import (
 	"github.com/zerok-ai/zk-observer/config"
 	"github.com/zerok-ai/zk-utils-go/ds"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 )
 
 var ServiceListRedisHandlerLogTag = "ServiceListRedisHandler"
@@ -18,7 +19,7 @@ type ServiceListRedisHandler struct {
 }
 
 func NewServiceListRedisHandler(otlpConfig *config.OtlpConfig) (*ServiceListRedisHandler, error) {
-	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, "clientDBNames.serviceListDBName", otlpConfig.Services.SyncDuration, otlpConfig.Services.BatchSize, ServiceListRedisHandlerLogTag)
+	redisHandler, err := NewRedisHandler(&otlpConfig.Redis, clientDBNames.ServiceListDBName, otlpConfig.Services.SyncDuration, otlpConfig.Services.BatchSize, ServiceListRedisHandlerLogTag)
 	if err != nil {
 		logger.Error(ServiceListRedisHandlerLogTag, "Error while creating redis client ", err)
 	}
