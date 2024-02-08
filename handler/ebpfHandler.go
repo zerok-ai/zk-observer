@@ -46,6 +46,9 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 
 	errorMessage := "Error while saving data into badger."
 
+	//Removing first five chars which contain messageid
+	data = data[5:]
+
 	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
 	err := json.Unmarshal(data, &ebpfDataResponse)
