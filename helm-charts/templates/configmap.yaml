@@ -21,7 +21,7 @@ data:
         traces: 3
         executor_attr: 4
         resource_and_scope_attr: 5
-        service_attr: 6
+        service_list: 6
         pod_details: 7
         error_details: 8
     badger:
