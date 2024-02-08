@@ -8,6 +8,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto"
 	"github.com/zerok-ai/zk-utils-go/socket"
+	"strings"
 )
 
 var ebpfHandlerLogTag = "ebpfHandler"
@@ -48,11 +49,12 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 
 	//Removing first five chars which contain messageid
 	jsonData := data[5:]
-
-	logger.Debug(ebpfHandlerLogTag, "Received data: ", string(jsonData))
+	jsonString := string(jsonData)
+	cleanedJsonString := strings.ReplaceAll(jsonString, "\x00", "")
+	
 	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
-	err := json.Unmarshal(jsonData, &ebpfDataResponse)
+	err := json.Unmarshal([]byte(cleanedJsonString), &ebpfDataResponse)
 	if err != nil {
 		logger.Debug(ebpfHandlerLogTag, "error unmarshalling data into map ", err)
 		return errorMessage
@@ -78,7 +80,6 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 
 	//Save the data into badger
 	logger.Debug(ebpfHandlerLogTag, "Saving data into badger with key: ", traceId, spanId)
-	logger.Debug(ebpfHandlerLogTag, "Ebpf data saved is: ", ebpfDataForSpan)
 	ebpfDataForSpanBytes, _ := proto.Marshal(ebpfDataForSpan)
 	err = handler.traceBadgerHandler.PutEbpfData(traceId, spanId, ebpfDataForSpanBytes)
 	if err != nil {
