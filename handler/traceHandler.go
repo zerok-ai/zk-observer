@@ -144,6 +144,7 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
 	th.resourceAndScoperAttrHandler.SyncPipeline()
+	th.serviceListHandler.SyncPipeline()
 }
 
 func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]zkUtilsCommonModel.GenericMap, bool) {
