@@ -162,51 +162,9 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, se
 	return false
 }
 
-func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
-	scenarioWorkloadNs, scenarioWorkloadDeplName, err := workload.GetNamespaceAndWorkloadName()
-	if err != nil {
-		logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload service: ", workload.Service, " error: ", err)
-		return false
-	}
-
-	resourceAttributes, ok := spanDetailsMap[common.OTelResourceAttrKey]
-	if !ok || resourceAttributes == nil {
-		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
-		return true
-	}
-	resourceAttrMap := resourceAttributes.(map[string]interface{})
-	//var k8sNamespace, k8sDeployment string
-	k8sNamespace, nsOk := resourceAttrMap[common.OTelResourceAttrNamespaceKey]
-	if !nsOk || k8sNamespace == "" {
-		logger.Warn(spanFilteringLogTag, "Namespace not found in resourceAttrMap, using namespace='*'. "+
-			"Please set k8s.namespace.name value in OTEL_RESOURCE_ATTRIBUTES env variable.")
-		k8sNamespace = common.ScenarioWorkloadGenericNamespaceKey
-	}
-	k8sDeployment, deplOk := resourceAttrMap[common.OTelResourceAttrDeploymentNameKey]
-	if !deplOk || k8sDeployment == "" {
-		logger.Warn(spanFilteringLogTag, "Deployment not found in resourceAttrMap, using deploymentName='*'. "+
-			"Please set k8s.deployment.name value in OTEL_RESOURCE_ATTRIBUTES env variable.")
-		k8sDeployment = common.ScenarioWorkloadGenericDeploymentKey
-	}
-
-	if scenarioWorkloadNs != common.ScenarioWorkloadGenericNamespaceKey && k8sNamespace != scenarioWorkloadNs {
-		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sNamespace, "scenarioWorkload: ", scenarioWorkloadNs)
-		logger.Info(spanFilteringLogTag, "Workload namespaces are not matching")
-		return false
-	}
-
-	if scenarioWorkloadDeplName != common.ScenarioWorkloadGenericDeploymentKey && k8sDeployment != scenarioWorkloadDeplName {
-		logger.Debug(spanFilteringLogTag, "NS::resourceAttrMap: ", k8sDeployment, "scenarioWorkload: ", scenarioWorkloadDeplName)
-		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
-		return false
-	}
-	return true
-}
-
 func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanServiceName string) bool {
 	workloadServiceName := workload.Service
 	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
-		logger.Debug(spanFilteringLogTag, "NS::spanAttrMap: ", spanServiceName, "scenarioWorkload: ", workloadServiceName)
 		logger.Info(spanFilteringLogTag, "OTel service name is not matching")
 		return false
 	}
