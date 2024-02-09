@@ -2,11 +2,16 @@ package utils
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"github.com/zerok-ai/zk-observer/common"
+	"github.com/zerok-ai/zk-observer/model"
+	common2 "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
+	"github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
+	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -16,6 +21,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -26,6 +32,11 @@ var NET_PEER_NAME = "net.peer.name"
 var NET_HOST_IP = "net.host.ip"
 var NET_PEER_IP = "net.peer.ip"
 var SERVER_SOCKET_ADDRESS = "server.socket.address"
+
+const (
+	ScopeAttributeHashPrefix    = "sh_" // sh stands for scope hash
+	ResourceAttributeHashPrefix = "rh_" // rh stands for resource hash
+)
 
 func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interface{}, resourceAttrMap map[string]interface{}) (string, string) {
 	destIP := ""
@@ -47,10 +58,8 @@ func GetSourceDestIPPair(spanKind model.SpanKind, attributes map[string]interfac
 		if ok1 && ok2 {
 			podNameStr, ok1 := podName.(string)
 			namespaceStr, ok2 := namespace.(string)
-			logger.Debug(spanUtilsLogTag, "Pod name is ", podNameStr, " namespace is ", namespaceStr)
 			if ok1 && ok2 {
 				clientIp, err := GetPodIP(podNameStr, namespaceStr)
-				//logger.Debug(spanUtilsLogTag, "Client IP is ", clientIp, " error is ", err)
 				if err == nil {
 					sourceIP = clientIp
 				}
@@ -102,38 +111,7 @@ func ConvertToIpv4(ipStr string) string {
 }
 
 func ConvertKVListToMap(attr []*commonv1.KeyValue) map[string]interface{} {
-	attrMap := map[string]interface{}{}
-	for _, kv := range attr {
-		value := GetAnyValue(kv.Value)
-		if value != nil {
-			attrMap[kv.Key] = value
-		}
-	}
-	return attrMap
-}
-
-func GetAnyValue(value *commonv1.AnyValue) interface{} {
-	switch v := value.Value.(type) {
-	case *commonv1.AnyValue_StringValue:
-		return v.StringValue
-	case *commonv1.AnyValue_ArrayValue:
-		var arr []interface{}
-		for _, item := range v.ArrayValue.Values {
-			arr = append(arr, GetAnyValue(item))
-		}
-		return arr
-	case *commonv1.AnyValue_BoolValue:
-		return v.BoolValue
-	case *commonv1.AnyValue_DoubleValue:
-		return v.DoubleValue
-	case *commonv1.AnyValue_BytesValue:
-		return v.BytesValue
-	case *commonv1.AnyValue_IntValue:
-		return v.IntValue
-	default:
-		logger.Debug(spanUtilsLogTag, "Unknown type ", v)
-	}
-	return nil
+	return enrichedSpan.ConvertKVListToMap(common2.ToPtr(zkUtilsOtel.KeyValueList{KeyValueList: attr}))
 }
 
 func GetSpanKind(kind tracev1.Span_SpanKind) model.SpanKind {
@@ -206,7 +184,7 @@ func GetExecutorProtocolFromSpanProtocol(spanProtocol model.ProtocolType) zkmode
 	return zkmodel.ProtocolGeneral
 }
 
-func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]interface{} {
+func ObjectToInterfaceMap(spanDetails any) map[string]interface{} {
 	spanDetailMap := map[string]interface{}{}
 
 	// Json marshal spanDetails.
@@ -219,4 +197,30 @@ func SpanDetailToInterfaceMap(spanDetails model.OTelSpanDetails) map[string]inte
 	// Json unmarshal spanDetails.
 	err = json.Unmarshal(spanDetailsJSON, &spanDetailMap)
 	return spanDetailMap
+}
+
+func GetResourceIp(spanKind model.SpanKind, sourceIp string, destIp string) string {
+	if spanKind == model.SpanKindClient && len(sourceIp) > 0 {
+		return sourceIp
+	} else if spanKind == model.SpanKindServer && len(destIp) > 0 {
+		return destIp
+	}
+	return ""
+
+}
+
+func GetMD5OfMap(m map[string]interface{}) string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+	var mapStr string
+	for _, k := range keys {
+		mapStr += fmt.Sprintf("%s=%v", k, m[k])
+	}
+
+	hash := md5.Sum([]byte(mapStr))
+	return hex.EncodeToString(hash[:])
 }

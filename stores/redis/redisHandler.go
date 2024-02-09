@@ -71,8 +71,8 @@ func (h *RedisHandler) InitializeRedisConn() error {
 	return nil
 }
 
-func (h *RedisHandler) Set(key string, value interface{}) error {
-	statusCmd := h.RedisClient.Set(h.ctx, key, value, 0)
+func (h *RedisHandler) Set(key string, value interface{}, ttl time.Duration) error {
+	statusCmd := h.RedisClient.Set(h.ctx, key, value, ttl)
 	return statusCmd.Err()
 }
 
@@ -104,7 +104,7 @@ func (h *RedisHandler) PingRedis() error {
 	return nil
 }
 
-func (h *RedisHandler) HMSetPipeline(key string, value map[string]string, expiration time.Duration) error {
+func (h *RedisHandler) HMSetPipeline(key string, value map[string]interface{}, expiration time.Duration) error {
 	cmd := h.Pipeline.HMSet(h.ctx, key, value)
 	if cmd.Err() != nil {
 		return cmd.Err()

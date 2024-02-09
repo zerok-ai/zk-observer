@@ -3,10 +3,11 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/common"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
-	"github.com/zerok-ai/zk-otlp-receiver/utils"
+	"github.com/zerok-ai/zk-observer/common"
+	"github.com/zerok-ai/zk-observer/config"
+	promMetrics "github.com/zerok-ai/zk-observer/metrics"
+	"github.com/zerok-ai/zk-observer/utils"
+	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkmodel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	evaluator "github.com/zerok-ai/zk-utils-go/scenario/model/evaluators"
@@ -16,11 +17,14 @@ import (
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
 	"k8s.io/utils/strings/slices"
 	"math/rand"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
 
 var spanFilteringLogTag = "SpanFilteringHandler"
+var podIp = os.Getenv("POD_IP")
 
 type SpanFilteringHandler struct {
 	VersionedStore    *zkredis.VersionedStore[zkmodel.Scenario]
@@ -66,7 +70,8 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) (WorkloadIdList, model.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
+	promMetrics.TotalSpansProcessed.WithLabelValues(podIp).Inc()
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "FilterSpans: Recovered from panic: ", r)
@@ -74,23 +79,23 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTe
 	}()
 	scenarios := h.VersionedStore.GetAllValues()
 	var satisfiedWorkLoadIds WorkloadIdList
-	var groupByMap model.GroupByMap
+	var groupByMap zkUtilsCommonModel.GroupByMap
 	for _, scenario := range scenarios {
 		if scenario == nil {
 			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap, resourceAttrMap, spanAttrMap)
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap)
 		if len(processedWorkloadIds) > 0 {
 			if satisfiedWorkLoadIds == nil {
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 			}
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, processedWorkloadIds...)
-			if groupByValues, hasData := h.processGroupBy(scenario, spanDetails, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
+			if groupByValues, hasData := h.processGroupBy(scenario, spanDetailsMap, satisfiedWorkLoadIds); hasData && len(groupByValues) != 0 {
 				if groupByMap == nil {
-					groupByMap = make(model.GroupByMap)
+					groupByMap = make(zkUtilsCommonModel.GroupByMap)
 				}
-				groupByMap[model.ScenarioId(scenario.Id)] = groupByValues
+				groupByMap[zkUtilsCommonModel.ScenarioId(scenario.Id)] = groupByValues
 			}
 		}
 	}
@@ -101,7 +106,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetails model.OTe
 	return satisfiedWorkLoadIds, groupByMap
 }
 
-func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetails model.OTelSpanDetails, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (model.GroupByValues, bool) {
+func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDetailsMap map[string]interface{}, satisfiedWorkLoadIds WorkloadIdList) (zkUtilsCommonModel.GroupByValues, bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(spanFilteringLogTag, "processGroupBy: Recovered from panic: ", r)
@@ -109,7 +114,7 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 	}()
 
 	var hasValueForScenario = false
-	var groupByValues = make(model.GroupByValues, len(scenario.GroupBy))
+	var groupByValues = make(zkUtilsCommonModel.GroupByValues, len(scenario.GroupBy))
 	ff := functions.NewFunctionFactory(h.podDetailsStore, h.executorAttrStore)
 
 	for idx, groupByItem := range scenario.GroupBy {
@@ -120,7 +125,7 @@ func (h *SpanFilteringHandler) processGroupBy(scenario *zkmodel.Scenario, spanDe
 			//Getting title and hash from executor attributes
 			titleVal, _ := ff.EvaluateString(groupByItem.Title, spanDetailsMap, &attribKey)
 			hashVal, _ := ff.EvaluateString(groupByItem.Hash, spanDetailsMap, &attribKey)
-			groupByValues[idx] = &model.GroupByValueItem{
+			groupByValues[idx] = &zkUtilsCommonModel.GroupByValueItem{
 				WorkloadId: groupByItem.WorkloadId,
 				Title:      fmt.Sprintf("%v", titleVal),
 				Hash:       fmt.Sprintf("%v", hashVal),
@@ -142,17 +147,34 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
-func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) bool {
+func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
 	if workload.Executor != zkmodel.ExecutorOTel {
 		logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 		return false
 	}
+
+	workloadServiceName := workload.Service
+	// if workloadServiceName contains "/" then it is a otel service name, else evaluate as k8s namespace/workload name
+	if !strings.Contains(workloadServiceName, "/") {
+		return h.isSpanToBeEvaluatedForOTelService(workload, spanDetailsMap)
+	} else {
+		return h.isSpanToBeEvaluatedForK8sWorkload(workload, spanDetailsMap)
+	}
+}
+
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
 	scenarioWorkloadNs, scenarioWorkloadDeplName, err := workload.GetNamespaceAndWorkloadName()
 	if err != nil {
 		logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload service: ", workload.Service, " error: ", err)
 		return false
 	}
 
+	resourceAttributes, ok := spanDetailsMap[common.OTelResourceAttrKey]
+	if !ok || resourceAttributes == nil {
+		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
+		return true
+	}
+	resourceAttrMap := resourceAttributes.(map[string]interface{})
 	//var k8sNamespace, k8sDeployment string
 	k8sNamespace, nsOk := resourceAttrMap[common.OTelResourceAttrNamespaceKey]
 	if !nsOk || k8sNamespace == "" {
@@ -178,11 +200,33 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, sp
 		logger.Info(spanFilteringLogTag, "Workload deployments are not matching")
 		return false
 	}
-
 	return true
 }
 
-func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}, resourceAttrMap map[string]interface{}, spanAttrMap map[string]interface{}) WorkloadIdList {
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
+	workloadServiceName := workload.Service
+	spanAttributes, ok := spanDetailsMap[common.OTelSpanAttrKey]
+	if !ok || spanAttributes == nil {
+		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
+		return true
+	}
+	spanAttrMap := spanAttributes.(map[string]interface{})
+	spanServiceName, nsOk := spanAttrMap[common.OTelSpanAttrServiceNameKey]
+	if !nsOk || spanServiceName == "" {
+		logger.Warn(spanFilteringLogTag, "Service Name not found in resourceAttrMap, using service name='*'. "+
+			"Please set OTEL_SERVICE_NAME or `service.name` key in OTEL_RESOURCE_ATTRIBUTES env variable.")
+		spanServiceName = common.ScenarioWorkloadGenericServiceNameKey
+	}
+
+	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
+		logger.Debug(spanFilteringLogTag, "NS::spanAttrMap: ", spanServiceName, "scenarioWorkload: ", workloadServiceName)
+		logger.Info(spanFilteringLogTag, "OTel service name is not matching")
+		return false
+	}
+	return true
+}
+
+func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
 	workloads := scenario.Workloads
@@ -190,10 +234,9 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		logger.Debug(spanFilteringLogTag, "No workloads found for scenario: ", scenario.Title)
 		return satisfiedWorkLoadIds
 	}
-	logger.Debug(spanFilteringLogTag, "Workloads found for scenario: ", scenario.Title, " workloads: ", workloads)
 	for id, workload := range *workloads {
 		// Check if span is to be evaluated for this workload
-		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap, resourceAttrMap, spanAttrMap) {
+		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap) {
 			logger.Debug(spanFilteringLogTag, "Span not to be evaluated for workload: ", id)
 			continue
 		}
@@ -203,16 +246,18 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 		attribKey := utils.GenerateAttribStoreKey(spanDetailsMap, workload.Protocol)
 		value, err := h.ruleEvaluator.EvalRule(rule, attribKey, spanDetailsMap)
 		if err != nil {
-			logger.Warn(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
+			logger.Info(spanFilteringLogTag, "Error while evaluating rule for scenario: ", scenario.Title, " workload id: ", id, " error: ", err)
 			continue
 		}
 		if value {
-			logger.Debug(spanFilteringLogTag, "Span matched with scenario: ", scenario.Title, " workload id: ", id)
 			currentTime := fmt.Sprintf("%v", time.Now().UnixNano())
 			key := currentTime + "_" + h.getRandomNumber() + "_" + id
 			h.workloadDetails.Store(key, WorkLoadTraceId{WorkLoadId: id, TraceId: traceId})
 			satisfiedWorkLoadIds = append(satisfiedWorkLoadIds, id)
 		}
+	}
+	if len(satisfiedWorkLoadIds) > 0 {
+		promMetrics.TotalSpansFiltered.WithLabelValues(podIp).Inc()
 	}
 	return satisfiedWorkLoadIds
 }
@@ -232,8 +277,6 @@ func (h *SpanFilteringHandler) syncWorkloadsToRedis() error {
 		traceId := workLoadTraceId.TraceId
 
 		redisKey := workloadId + "_latest"
-		logger.Debug(spanFilteringLogTag, "Setting value for key: ", redisKey, " workloadId ", workloadId)
-		//logger.Debug(spanFilteringLogTag, "Len of redis pipeline ", h.pipeline.Len())
 		err := h.redisHandler.SAddPipeline(redisKey, traceId, time.Duration(h.Cfg.Workloads.Ttl)*time.Second)
 		if err != nil {
 			logger.Error(spanFilteringLogTag, "Error while setting workload data: ", err)

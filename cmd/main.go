@@ -5,10 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/kataras/iris/v12"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/handler"
-	"github.com/zerok-ai/zk-otlp-receiver/server"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/handler"
+	promMetrics "github.com/zerok-ai/zk-observer/metrics"
+	"github.com/zerok-ai/zk-observer/server"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -23,6 +24,11 @@ var ctx = context.Background()
 
 type Args struct {
 	ConfigPath string
+}
+
+// register collector method
+func init() {
+	prometheus.MustRegister(promMetrics.BadgerCollector(""))
 }
 
 func main() {
@@ -60,52 +66,17 @@ func main() {
 	logger.Debug(mainLogTag, "Started grpc server.")
 
 	//Creating http/protobuf server
-
-	app := newApp()
-	irisConfig := iris.WithConfiguration(iris.Configuration{
-		DisablePathCorrection: true,
-		LogLevel:              otlpConfig.Logs.Level,
-	})
-
-	app.Get("/health", func(ctx iris.Context) {
-		ctx.StatusCode(iris.StatusOK)
-	})
-
-	app.Post("/v1/traces", traceHandler.ServeHTTP)
-
-	err = app.Run(iris.Addr(":"+otlpConfig.Port), irisConfig)
-
+	// Instantiate the HTTPServer
+	httpServer := server.NewHTTPServer()
+	// Configure routes and pass the traceHandler
+	httpServer.ConfigureRoutes(traceHandler)
+	// Run the HTTP server with the specified port and configs
+	err = httpServer.Run(*otlpConfig)
 	if err != nil {
 		logger.Error(mainLogTag, "Error starting the server:", err)
 	}
+	logger.Debug(mainLogTag, "Started http server.")
 
-}
-
-func newApp() *iris.Application {
-	app := iris.Default()
-
-	crs := func(ctx iris.Context) {
-		ctx.Header("Access-Control-Allow-Credentials", "true")
-
-		if ctx.Method() == iris.MethodOptions {
-			ctx.Header("Access-Control-Methods", "POST")
-
-			ctx.Header("Access-Control-Allow-Headers",
-				"Access-Control-Allow-Origin,Content-Type")
-
-			ctx.Header("Access-Control-Max-Age",
-				"86400")
-
-			ctx.StatusCode(iris.StatusNoContent)
-			return
-		}
-
-		ctx.Next()
-	}
-	app.UseRouter(crs)
-	app.AllowMethods(iris.MethodOptions)
-
-	return app
 }
 
 func ProcessArgs(cfg interface{}) Args {

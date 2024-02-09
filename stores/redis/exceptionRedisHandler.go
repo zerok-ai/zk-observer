@@ -3,13 +3,14 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/model"
 	zkcommon "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"sync"
+	"time"
 )
 
 var exceptionLogTag = "ExceptionRedisHandler"
@@ -44,19 +45,26 @@ func (h *ExceptionRedisHandler) SyncExceptionData(exception *model.ExceptionDeta
 		}
 		hash = zkcommon.Generate256SHA(exception.Message, exception.Type, exception.Stacktrace)
 		_, ok := h.existingExceptionData.Load(hash)
+		expiry := time.Duration(h.otlpConfig.Exception.Ttl) * time.Second
 		if !ok {
 			exceptionJSON, err := json.Marshal(exception)
 			if err != nil {
-				logger.Error(exceptionLogTag, "Error encoding exception details for spanID %s: %v\n", spanId, err)
+				logger.ErrorF(exceptionLogTag, "Error encoding exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
 			//Directly setting this to redis, because each resource will be only be written once. So no need to create a pipeline.
-			err = h.redisHandler.SetNXPipeline(hash, exceptionJSON, 0)
+			err = h.redisHandler.SetNXPipeline(hash, exceptionJSON, expiry)
 			if err != nil {
-				logger.Error(exceptionLogTag, "Error while setting exception details for spanID %s: %v\n", spanId, err)
+				logger.ErrorF(exceptionLogTag, "Error while setting exception details for spanID %s: %v\n", spanId, err)
 				return "", err
 			}
 			h.existingExceptionData.Store(hash, true)
+		} else {
+			err = h.redisHandler.setExpiry(hash, expiry)
+			if err != nil {
+				logger.ErrorF(exceptionLogTag, "Error while setting expiry for exception details for spanID %s: %v\n", spanId, err)
+				return "", err
+			}
 		}
 	} else {
 		logger.Error(exceptionLogTag, "Could not find stacktrace for exception for span Id ", spanId)
