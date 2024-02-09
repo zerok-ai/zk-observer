@@ -201,11 +201,13 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 		var resourceAttrHash string
 		var resourceAttrMap map[string]interface{}
 		var resourceInfoMap map[string]interface{}
+		serviceName := common.ScenarioWorkloadGenericServiceNameKey
 		if resourceSpan.Resource != nil {
 			resourceInfoMap = utils.ObjectToInterfaceMap(resourceInfo)
 			resourceAttrMap = utils.ConvertKVListToMap(resourceSpan.Resource.Attributes)
 			resourceInfoMap["attributes_map"] = resourceAttrMap
 			resourceAttrHash = utils.ResourceAttributeHashPrefix + utils.GetMD5OfMap(resourceInfoMap)
+			serviceName = utils.GetServiceName(resourceAttrMap)
 		}
 		for _, scopeSpans := range resourceSpan.ScopeSpans {
 			scopeInfo := model.ScopeInfo{
@@ -250,7 +252,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 				spanJSON[common.OTelSpanEventsKey] = spanEvents
 				spanJSON[common.OTelSpanErrorKey] = errorFlag
 				// Evaluating and storing data in Otel span format.
-				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON)
+				workloadIds, groupBy := th.spanFilteringHandler.FilterSpans(traceId, spanJSON, serviceName)
 
 				spanKind := model.NewFromOTelSpan(span.Kind)
 				sourceIP, destIP := utils.GetSourceDestIPPair(spanKind, spanAttributes, resourceAttrMap)
@@ -282,7 +284,6 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					logger.Error(traceLogTag, "Error while saving  scope data to redis for spanId ", spanId, " error: ", err)
 				}
 
-				serviceName := utils.GetServiceName(spanAttributes)
 				if serviceName == common.ScenarioWorkloadGenericServiceNameKey {
 					logger.ErrorF(traceLogTag, "Service name could not be fetched for spanId %s, traceId %s", spanId, traceId)
 				} else if err := th.serviceListHandler.PutServiceListData(common.ServiceListKey, serviceName); err != nil {
