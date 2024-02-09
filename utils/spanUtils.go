@@ -224,3 +224,13 @@ func GetMD5OfMap(m map[string]interface{}) string {
 	hash := md5.Sum([]byte(mapStr))
 	return hex.EncodeToString(hash[:])
 }
+
+func GetServiceName(resourceAttributesMap map[string]interface{}) string {
+	spanServiceName, nsOk := resourceAttributesMap[common.OTelSpanAttrServiceNameKey]
+	if !nsOk || spanServiceName == "" {
+		logger.Warn(spanUtilsLogTag, "Service Name not found in resourceAttrMap, using service name='*'. "+
+			"Please set OTEL_SERVICE_NAME or `service.name` key in OTEL_RESOURCE_ATTRIBUTES env variable.")
+		spanServiceName = common.ScenarioWorkloadGenericServiceNameKey
+	}
+	return spanServiceName.(string)
+}
