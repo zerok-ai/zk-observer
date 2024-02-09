@@ -2,9 +2,10 @@ package redis
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/zerok-ai/zk-otlp-receiver/config"
-	"github.com/zerok-ai/zk-otlp-receiver/model"
+	"errors"
+	"github.com/zerok-ai/zk-observer/config"
+	"github.com/zerok-ai/zk-observer/model"
+	"github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/clientDBNames"
 	"sync"
@@ -32,11 +33,7 @@ func NewResourceDetailsHandler(config *config.OtlpConfig) (*ResourceRedisHandler
 	return &handler, nil
 }
 
-func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpanDetails, attrMap map[string]interface{}) error {
-	if spanDetailsInput == nil {
-		return fmt.Errorf("spanDetails are nil")
-	}
-
+func (h *ResourceRedisHandler) SyncResourceData(resourceIp string, attrMap map[string]interface{}) error {
 	if len(attrMap) == 0 {
 		//Nothing to sync.
 		return nil
@@ -48,10 +45,9 @@ func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpan
 		return err
 	}
 
-	spanDetails := *spanDetailsInput
-	resourceIp := spanDetails.GetResourceIP()
-	if len(resourceIp) == 0 {
-		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty for spanKind ", spanDetails.SpanKind)
+	if common.IsEmpty(resourceIp) {
+		logger.Debug(resourceLogTag, "Skipping saving resource data since resource Ip is empty")
+		return errors.New("resourceIp is empty")
 	}
 
 	_, ok := h.existingResourceData.Load(resourceIp)
@@ -65,7 +61,6 @@ func (h *ResourceRedisHandler) SyncResourceData(spanDetailsInput *model.OTelSpan
 			return err
 		}
 		filteredResourceData["telemetry"] = string(telemetryDataJSON)
-		logger.Debug("Setting resource data ", filteredResourceData)
 		err = h.redisHandler.HMSet(resourceIp, filteredResourceData)
 		if err != nil {
 			logger.Error(resourceLogTag, "Error while setting resource data: ", err)

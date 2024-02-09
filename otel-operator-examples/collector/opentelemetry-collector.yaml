@@ -2,6 +2,7 @@ apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
 metadata:
   name: opentelemetry
+  namespace: opentelemetry-operator-system
 spec:
   mode: daemonset
   hostNetwork: true
@@ -11,11 +12,20 @@ spec:
         protocols:
           grpc:
           http:
-    processors:
+      otlp/zerok:
+         protocols:
+          grpc:
+            endpoint: 0.0.0.0:4319
+          http:
+            endpoint: 0.0.0.0:4320
     exporters:
       otlphttp/zerok:
-        endpoint: http://zk-otlp-receiver.zk-client.svc.cluster.local
+        endpoint: http://0.0.0.0:31600
         compression: "none"
+        tls:
+          insecure: true
+      otlp/jaeger:
+        endpoint: http://jaeger.default.svc.cluster.local:4317
         tls:
           insecure: true
     service:
@@ -24,3 +34,7 @@ spec:
           receivers: [otlp]
           processors: []
           exporters: [otlphttp/zerok]
+        traces/filtered:
+          receivers: [otlp/zerok]
+          processors: []
+          exporters: [otlp/jaeger, otlphttp/zerok]

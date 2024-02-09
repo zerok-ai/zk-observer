@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: zk-otlp-receiver
+  name: zk-observer
   labels:
   {{- include "helm-charts.labels" . | nindent 4 }}
 data:
@@ -22,6 +22,12 @@ data:
         executor_attr: 4
         pod_details: 7
         error_details: 8
+        resource_and_scope_attr: 5
+    badger:
+      badgerPath: /zk/badger-db
+      batchSize: 20
+      gcDiscardRatio: 0.5
+      gcTimerDuration: 300
     traces:
       syncDuration: 30
       batchSize: 30
@@ -36,6 +42,8 @@ data:
     exception:
       syncDuration: 30
       batchSize: 30
+      ttl: 3600
     resources:
       syncDuration: 30
       batchSize: 30
+      ttl: 3600

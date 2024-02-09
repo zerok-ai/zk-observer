@@ -1,10 +1,10 @@
 global:
-  dockerBase: "us-west1-docker.pkg.dev/zerok-dev/stage/"
+  dockerBase: "zerokai"
 
 replicaCount: 1
 
 image:
-  repo: zk-otlp-receiver
+  repo: zk-observer
   tag: "latest"
   pullPolicy: Always
 
@@ -19,5 +19,6 @@ ports:
 - port: 80
   protocol: TCP
   targetPort: 8147
+  nodePort: 31602
 
-type: ClusterIP
+type: NodePort

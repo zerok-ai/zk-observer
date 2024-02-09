@@ -1,4 +1,4 @@
 .idea/
 vendor/
-zk-otlp-receiver
+zk-observer
 bin/
