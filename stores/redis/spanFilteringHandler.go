@@ -70,7 +70,7 @@ func NewSpanFilteringHandler(cfg *config.OtlpConfig, executorAttrStore *stores.E
 	return &handler, nil
 }
 
-func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
+func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[string]interface{}, serviceName string) (WorkloadIdList, zkUtilsCommonModel.GroupByMap) {
 	promMetrics.TotalSpansProcessed.WithLabelValues(podIp).Inc()
 	defer func() {
 		if r := recover(); r != nil {
@@ -85,7 +85,7 @@ func (h *SpanFilteringHandler) FilterSpans(traceId string, spanDetailsMap map[st
 			logger.Info(spanFilteringLogTag, "No scenario found")
 			continue
 		}
-		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap)
+		processedWorkloadIds := h.processScenarioWorkloads(scenario, traceId, spanDetailsMap, serviceName)
 		if len(processedWorkloadIds) > 0 {
 			if satisfiedWorkLoadIds == nil {
 				satisfiedWorkLoadIds = make(WorkloadIdList, 0)
@@ -147,19 +147,19 @@ func getProtocolForWorkloadId(workloadID string, scenario *zkmodel.Scenario) zkm
 	return workload.Protocol
 }
 
-func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
+func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, serviceName string) bool {
 	if workload.Executor != zkmodel.ExecutorOTel {
 		logger.Debug(spanFilteringLogTag, "Workload executor is not OTel")
 		return false
 	}
 
 	workloadServiceName := workload.Service
-	// if workloadServiceName contains "/" then it is a otel service name, else evaluate as k8s namespace/workload name
-	if !strings.Contains(workloadServiceName, "/") {
-		return h.isSpanToBeEvaluatedForOTelService(workload, spanDetailsMap)
-	} else {
-		return h.isSpanToBeEvaluatedForK8sWorkload(workload, spanDetailsMap)
+	// if workloadServiceName contains "/" then it is an otel service name, else evaluate as k8s namespace/workload name
+	if strings.Contains(workloadServiceName, "OTEL/") {
+		return h.isSpanToBeEvaluatedForOTelService(workload, serviceName)
 	}
+
+	return false
 }
 
 func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
@@ -203,30 +203,18 @@ func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmode
 	return true
 }
 
-func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanServiceName string) bool {
 	workloadServiceName := workload.Service
-	spanAttributes, ok := spanDetailsMap[common.OTelSpanAttrKey]
-	if !ok || spanAttributes == nil {
-		logger.Warn(spanFilteringLogTag, "Resource attributes not found in spanDetailsMap")
-		return true
-	}
-	spanAttrMap := spanAttributes.(map[string]interface{})
-	spanServiceName, nsOk := spanAttrMap[common.OTelSpanAttrServiceNameKey]
-	if !nsOk || spanServiceName == "" {
-		logger.Warn(spanFilteringLogTag, "Service Name not found in resourceAttrMap, using service name='*'. "+
-			"Please set OTEL_SERVICE_NAME or `service.name` key in OTEL_RESOURCE_ATTRIBUTES env variable.")
-		spanServiceName = common.ScenarioWorkloadGenericServiceNameKey
-	}
-
 	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
 		logger.Debug(spanFilteringLogTag, "NS::spanAttrMap: ", spanServiceName, "scenarioWorkload: ", workloadServiceName)
 		logger.Info(spanFilteringLogTag, "OTel service name is not matching")
 		return false
 	}
+
 	return true
 }
 
-func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}) WorkloadIdList {
+func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenario, traceId string, spanDetailsMap map[string]interface{}, serviceName string) WorkloadIdList {
 	var satisfiedWorkLoadIds = make(WorkloadIdList, 0)
 	//Getting workloads and iterate over them
 	workloads := scenario.Workloads
@@ -236,7 +224,7 @@ func (h *SpanFilteringHandler) processScenarioWorkloads(scenario *zkmodel.Scenar
 	}
 	for id, workload := range *workloads {
 		// Check if span is to be evaluated for this workload
-		if !h.IsSpanToBeEvaluated(workload, spanDetailsMap) {
+		if !h.IsSpanToBeEvaluated(workload, serviceName) {
 			logger.Debug(spanFilteringLogTag, "Span not to be evaluated for workload: ", id)
 			continue
 		}
