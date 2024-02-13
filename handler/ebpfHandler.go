@@ -51,7 +51,9 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	jsonData := data[5:]
 	jsonString := string(jsonData)
 	cleanedJsonString := strings.ReplaceAll(jsonString, "\x00", "")
-	
+
+	logger.Debug(ebpfHandlerLogTag, "Cleaned data: ", cleanedJsonString)
+
 	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
 	err := json.Unmarshal([]byte(cleanedJsonString), &ebpfDataResponse)
@@ -59,6 +61,9 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 		logger.Debug(ebpfHandlerLogTag, "error unmarshalling data into map ", err)
 		return errorMessage
 	}
+
+	printStr, err := json.Marshal(ebpfDataResponse)
+	logger.Debug(ebpfHandlerLogTag, "Unmarshalled data: ", string(printStr))
 
 	//Extract trace id and span id
 	traceId := ebpfDataResponse.TraceID
