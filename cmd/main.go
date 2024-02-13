@@ -10,17 +10,16 @@ import (
 	"github.com/zerok-ai/zk-observer/handler"
 	promMetrics "github.com/zerok-ai/zk-observer/metrics"
 	"github.com/zerok-ai/zk-observer/server"
+	"github.com/zerok-ai/zk-observer/stores/badger"
 	zkconfig "github.com/zerok-ai/zk-utils-go/config"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
-	pb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	"google.golang.org/grpc"
-	"net"
 	"os"
 )
 
 var mainLogTag = "main"
 var ctx = context.Background()
+var podIp = os.Getenv("POD_IP")
 
 type Args struct {
 	ConfigPath string
@@ -44,26 +43,28 @@ func main() {
 	logger.Init(otlpConfig.Logs)
 	storeFactory := *stores.GetStoreFactory(otlpConfig.Redis, ctx)
 
-	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory)
+	traceBadgerHandler, err := badger.NewTracesBadgerHandler(otlpConfig)
+	if err != nil {
+		logger.Error(mainLogTag, "Error while creating badger handler:", err)
+		return
+	}
+
+	traceHandler, err := handler.NewTraceHandler(otlpConfig, storeFactory, traceBadgerHandler)
 
 	if err != nil {
 		logger.Error(mainLogTag, "Error while creating traceHandler:", err)
 		return
 	}
 
-	logger.Debug(mainLogTag, "Starting grpc server.")
-
 	//Creating grpc server
-	listener, err := net.Listen("tcp", ":4317")
-	if err != nil {
-		logger.Error(mainLogTag, "Error while creating grpc listener:", err)
-		return
-	}
-	s := grpc.NewServer()
-	pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
-	go s.Serve(listener)
-
-	logger.Debug(mainLogTag, "Started grpc server.")
+	//listener, err := net.Listen("tcp", ":4317")
+	//if err != nil {
+	//	logger.Error(mainLogTag, "Error while creating grpc listener:", err)
+	//	return
+	//}
+	//s := grpc.NewServer()
+	//pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
+	//go s.Serve(listener)
 
 	//Creating http/protobuf server
 	// Instantiate the HTTPServer

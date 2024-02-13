@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  labels:
+    app: zk-observer
+  {{- include "helm-charts.labels" . | nindent 4 }}
+data:
+  nats.conf: {{ .Values.natsConfig.natsConf | toYaml | indent 1 }}
