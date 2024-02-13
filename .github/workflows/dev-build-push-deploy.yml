@@ -41,7 +41,7 @@ jobs:
     needs: init
 
   deploy:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-deploy.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-deploy.yml@gcp-action-bump
     with:
       CLUSTERNAME: ${{ needs.init.outputs.CLUSTERNAME }}
       VERSION: ${{ needs.init.outputs.VERSION }}
