@@ -162,6 +162,16 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, se
 	return false
 }
 
+func (h *SpanFilteringHandler) isSpanToBeEvaluatedForK8sWorkload(workload zkmodel.Workload, spanDetailsMap map[string]interface{}) bool {
+	scenarioWorkloadNs, scenarioWorkloadDeplName, err := workload.GetNamespaceAndWorkloadName()
+	if err != nil {
+		logger.Debug(spanFilteringLogTag, "Error while getting namespace and workload name for workload service: ", workload.Service, " error: ", err)
+		return false
+	}
+
+	return false
+}
+
 func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanServiceName string) bool {
 	workloadServiceName := workload.Service
 	if spanServiceName != common.ScenarioWorkloadGenericDeploymentKey && spanServiceName != workloadServiceName {
