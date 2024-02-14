@@ -23,14 +23,14 @@ env:
   APP_NAME: ${{ vars.APP_NAME }}
 jobs:
   init:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-dev-init.yml@gcp-action-bump
     with:
       GKE_CLUSTER: ${{ github.event.inputs.GKE_CLUSTER }}
       GIT_TAG: ${{ github.ref }}
       DOCKER_TAG: ${{ github.event.inputs.DOCKER_TAG }}
 
   build-push:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push-multiarch.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-build-push-multiarch.yml@gcp-action-bump
     with:
       VERSION: ${{ needs.init.outputs.VERSION }}
       ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
@@ -41,7 +41,7 @@ jobs:
     needs: init
 
   deploy:
-    uses: zerok-ai/zk-git-actions/.github/workflows/zk-deploy.yml@main
+    uses: zerok-ai/zk-git-actions/.github/workflows/zk-deploy.yml@gcp-action-bump
     with:
       CLUSTERNAME: ${{ needs.init.outputs.CLUSTERNAME }}
       VERSION: ${{ needs.init.outputs.VERSION }}
