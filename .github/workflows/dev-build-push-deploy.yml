@@ -37,7 +37,6 @@ jobs:
       DOCKER_IDENTIFIER: ${{ needs.init.outputs.CLUSTERNAME }}
       DOCKER_REG: ${{ needs.init.outputs.DOCKER_REG }}
     secrets:
-      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
       AWS_ACCESS_ID: ${{ secrets.AWS_ACCESS_ID }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
     needs: init
