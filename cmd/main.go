@@ -66,6 +66,8 @@ func main() {
 	//pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
 	//go s.Serve(listener)
 
+	go handler.CreateAndStartEbpfHandler(otlpConfig, traceBadgerHandler)
+
 	//Creating http/protobuf server
 	// Instantiate the HTTPServer
 	httpServer := server.NewHTTPServer()
