@@ -2,12 +2,14 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/zerok-ai/zk-observer/config"
 	"github.com/zerok-ai/zk-observer/stores/badger"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto"
 	"github.com/zerok-ai/zk-utils-go/socket"
+	"regexp"
 	"strings"
 )
 
@@ -36,6 +38,7 @@ type EbpfDataJson struct {
 
 func CreateAndStartEbpfHandler(config *config.OtlpConfig, traceBadgerHandler *badger.TraceBadgerHandler) *EbpfHandler {
 	handler := EbpfHandler{}
+	logger.Debug(ebpfHandlerLogTag, "Creating ebpf handler on config ", config.TcpServerConfig)
 	tcpServer := socket.CreateTCPServer(config.TcpServerConfig, handler.HandleData)
 	handler.tcpServer = *tcpServer
 	handler.traceBadgerHandler = traceBadgerHandler
@@ -52,8 +55,6 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	jsonString := string(jsonData)
 	cleanedJsonString := strings.ReplaceAll(jsonString, "\x00", "")
 
-	logger.Debug(ebpfHandlerLogTag, "Cleaned data: ", cleanedJsonString)
-
 	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
 	err := json.Unmarshal([]byte(cleanedJsonString), &ebpfDataResponse)
@@ -62,12 +63,20 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 		return errorMessage
 	}
 
-	printStr, err := json.Marshal(ebpfDataResponse)
-	logger.Debug(ebpfHandlerLogTag, "Unmarshalled data: ", string(printStr))
+	traceParent, err := extractTraceParent(ebpfDataResponse.ReqHeaders)
+	if err != nil || traceParent == "" {
+		logger.Debug(ebpfHandlerLogTag, "Could not extract traceParent, ignoring the trace.")
+		return ""
+	}
+
+	logger.Debug(ebpfHandlerLogTag, "TraceParent: ", traceParent)
 
 	//Extract trace id and span id
-	traceId := ebpfDataResponse.TraceID
-	spanId := ebpfDataResponse.SpanID
+	traceId, spanId, err := getTraceIdAndSpanIdFromTraceParent(traceParent)
+	if err != nil || traceId == "" || spanId == "" {
+		logger.Debug(ebpfHandlerLogTag, "Could not extract traceId and spanId, ignoring the trace.")
+		return ""
+	}
 
 	ebpfDataForSpan := &zkUtilsOtel.EbpfEntryDataForSpan{
 		ContentType:  ebpfDataResponse.ContentType,
@@ -93,4 +102,36 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	}
 
 	return "Success"
+}
+
+func getTraceIdAndSpanIdFromTraceParent(key string) (string, string, error) {
+
+	splitKey := strings.Split(key, "-")
+	if len(splitKey) < 3 {
+		return "", "", fmt.Errorf("invalid traceParent value")
+	}
+	traceId := splitKey[1]
+	spanId := splitKey[2]
+
+	return traceId, spanId, nil
+}
+
+// Function to extract the traceParent value from req_headers string
+func extractTraceParent(input string) (string, error) {
+	// Regex pattern to match the traceParent
+	pattern := `"traceparent":"([^"]+)"`
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return "", err
+	}
+
+	matches := re.FindStringSubmatch(input)
+
+	// Check if a match was found
+	if len(matches) > 1 {
+		return matches[1], nil
+	}
+
+	return "", fmt.Errorf("traceParent value not found")
 }

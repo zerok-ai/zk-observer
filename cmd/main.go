@@ -66,6 +66,7 @@ func main() {
 	//pb.RegisterTraceServiceServer(s, &server.GrpcServer{TraceHandler: traceHandler})
 	//go s.Serve(listener)
 
+	logger.Debug(mainLogTag, "Starting ebpf socket.")
 	go handler.CreateAndStartEbpfHandler(otlpConfig, traceBadgerHandler)
 
 	//Creating http/protobuf server
