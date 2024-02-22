@@ -20,9 +20,10 @@ data:
         scenarios: 2
         traces: 3
         executor_attr: 4
+        resource_and_scope_attr: 5
+        service_list: 6
         pod_details: 7
         error_details: 8
-        resource_and_scope_attr: 5
     badger:
       badgerPath: /zk/badger-db
       batchSize: 20
@@ -47,3 +48,6 @@ data:
       syncDuration: 30
       batchSize: 30
       ttl: 3600
+    services:
+      syncDuration: 30
+      batchSize: 30

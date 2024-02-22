@@ -20,7 +20,7 @@ spec:
             endpoint: 0.0.0.0:4320
     exporters:
       otlphttp/zerok:
-        endpoint: http://0.0.0.0:31600
+        endpoint: http://0.0.0.0:31602
         compression: "none"
         tls:
           insecure: true
