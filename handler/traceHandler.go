@@ -126,7 +126,7 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.deleteFromTraceStore(keysToDelete)
 
 	th.traceRedisHandler.SyncPipeline()
-	th.traceBadgerHandler.SyncPipeline()
+	//th.traceBadgerHandler.SyncPipeline()
 	th.exceptionHandler.SyncPipeline()
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
@@ -225,6 +225,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					continue
 				}
 
+				logger.Debug(traceLogTag, "Processing span ", spanId, " for trace ", traceId)
+
 				key := traceId + delimiter + spanId
 				var resourceIp string
 				spanAttributes := utils.ConvertKVListToMap(span.Attributes)
@@ -272,7 +274,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			}
 		}
 	}
-	defer logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
+	logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
 }
 
 func (th *TraceHandler) EvalAndStoreZkSpan() {
@@ -442,6 +444,7 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 }
 
 func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zkUtilsOtel.BadgerResponseList, error) {
+	logger.Debug(traceLogTag, "Getting bulk data from badger for prefix list ", prefixList)
 	//Getting saved from badger for the given prefix list.
 	traceDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
 
@@ -465,12 +468,14 @@ func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zk
 
 		//Checking for ebpf scenario
 		if strings.Contains(key, "-e-") {
+			logger.Debug(traceLogTag, "Getting ebpf data for key ", key)
 			var d zkUtilsOtel.EbpfEntryDataForSpan
 			err := proto.Unmarshal([]byte(value), &d)
 			if err != nil {
 				logger.Error(traceLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
 				continue
 			}
+			logger.Debug(traceLogTag, "Ebpf data for key ", key, " is ", d.ReqHeaders)
 			response.EbpfResponseList = append(response.EbpfResponseList, &zkUtilsOtel.BadgerEbpfResponse{
 				Key:   key,
 				Value: &d,
