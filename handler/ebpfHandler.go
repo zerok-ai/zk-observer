@@ -162,7 +162,7 @@ func splitTraces(traces string) []string {
 	return parts
 }
 
-func GetHeaders(jsonStr string) *zkUtilsOtel.KeyValueList {
+func GetHeaders(jsonStr string) *v1.KeyValueList {
 	var result map[string]string
 
 	err := json.Unmarshal([]byte(jsonStr), &result)
@@ -178,5 +178,5 @@ func GetHeaders(jsonStr string) *zkUtilsOtel.KeyValueList {
 		})
 	}
 
-	return &zkUtilsOtel.KeyValueList{KeyValueList: keyValueList}
+	return &v1.KeyValueList{Values: keyValueList}
 }

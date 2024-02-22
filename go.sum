@@ -289,6 +289,8 @@ github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240208133128-e7b535c111b3 h1:
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240208133128-e7b535c111b3/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222103054-7600df08575d h1:vf6VUF9iRFruLRw/b7pyXOMFAeWQDhzkWUsWnuUy1ik=
 github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222103054-7600df08575d/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222104428-cedfae42cb63 h1:9SlGBv2UroZMGGCz0uGp/D61irTGIfIUFn7pxo9CoL8=
+github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222104428-cedfae42cb63/go.mod h1:dJGPB28rFsEWRbUMkWPN6JwaNeEAKmp5Z4QYb293Gdo=
 go.opentelemetry.io/proto/otlp v1.0.0 h1:T0TX0tmXU8a3CbNXzEKGeU5mIVOdf0oykP+u2lIVU/I=
 go.opentelemetry.io/proto/otlp v1.0.0/go.mod h1:Sy6pihPLfYHkr3NkUbEhGHFhINUSI/v80hjKIs5JXpM=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
