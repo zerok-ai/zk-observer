@@ -9,7 +9,7 @@ require (
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222104428-cedfae42cb63
+	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240222195620-1303e5a0a043
 	go.opentelemetry.io/proto/otlp v1.0.0
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
