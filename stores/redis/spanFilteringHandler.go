@@ -18,7 +18,6 @@ import (
 	"k8s.io/utils/strings/slices"
 	"math/rand"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -153,13 +152,7 @@ func (h *SpanFilteringHandler) IsSpanToBeEvaluated(workload zkmodel.Workload, se
 		return false
 	}
 
-	workloadServiceName := workload.Service
-	// if workloadServiceName contains "/" then it is an otel service name, else evaluate as k8s namespace/workload name
-	if strings.Contains(workloadServiceName, "OTEL/") {
-		return h.isSpanToBeEvaluatedForOTelService(workload, serviceName)
-	}
-
-	return false
+	return true
 }
 
 func (h *SpanFilteringHandler) isSpanToBeEvaluatedForOTelService(workload zkmodel.Workload, spanServiceName string) bool {
