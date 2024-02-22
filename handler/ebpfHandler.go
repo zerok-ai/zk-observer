@@ -54,19 +54,26 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	jsonData := data[5:]
 	jsonString := string(jsonData)
 	cleanedJsonString := strings.ReplaceAll(jsonString, "\x00", "")
+	traces := splitTraces(cleanedJsonString)
+	for _, trace := range traces {
+		handler.handleSingleTrace(trace, errorMessage)
+	}
+	return "Success"
+}
 
+func (handler *EbpfHandler) handleSingleTrace(cleanedJsonString string, errorMessage string) {
 	//Unmarshal the data into a json
 	var ebpfDataResponse EbpfDataJson
 	err := json.Unmarshal([]byte(cleanedJsonString), &ebpfDataResponse)
 	if err != nil {
 		logger.Debug(ebpfHandlerLogTag, "error unmarshalling data into map ", err)
-		return errorMessage
+		return
 	}
 
 	traceParent, err := extractTraceParent(ebpfDataResponse.ReqHeaders)
 	if err != nil || traceParent == "" {
 		logger.Debug(ebpfHandlerLogTag, "Could not extract traceParent, ignoring the trace.")
-		return ""
+		return
 	}
 
 	logger.Debug(ebpfHandlerLogTag, "TraceParent: ", traceParent)
@@ -75,7 +82,7 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	traceId, spanId, err := getTraceIdAndSpanIdFromTraceParent(traceParent)
 	if err != nil || traceId == "" || spanId == "" {
 		logger.Debug(ebpfHandlerLogTag, "Could not extract traceId and spanId, ignoring the trace.")
-		return ""
+		return
 	}
 
 	ebpfDataForSpan := &zkUtilsOtel.EbpfEntryDataForSpan{
@@ -98,10 +105,7 @@ func (handler *EbpfHandler) HandleData(data []byte) string {
 	err = handler.traceBadgerHandler.PutEbpfData(traceId, spanId, ebpfDataForSpanBytes)
 	if err != nil {
 		logger.Debug(ebpfHandlerLogTag, "Error while saving data into badger with key: ", traceId, spanId, err)
-		return errorMessage
 	}
-
-	return "Success"
 }
 
 func getTraceIdAndSpanIdFromTraceParent(key string) (string, string, error) {
@@ -134,4 +138,25 @@ func extractTraceParent(input string) (string, error) {
 	}
 
 	return "", fmt.Errorf("traceParent value not found")
+}
+
+func splitTraces(traces string) []string {
+	re := regexp.MustCompile(`\}.{4};\{`)
+	parts := re.Split(traces, -1)
+
+	if len(parts) == 1 {
+		return parts
+	}
+
+	//Adding end bracket to the first part
+	parts[0] = parts[0] + "}"
+
+	//Adding start bracket to the last part
+	parts[len(parts)-1] = "{" + parts[len(parts)-1]
+
+	//Add the start and end brackets to the other parts
+	for i := 1; i < len(parts)-1; i++ {
+		parts[i] = "{" + parts[i] + "}"
+	}
+	return parts
 }
