@@ -9,6 +9,7 @@ import (
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto"
 	"github.com/zerok-ai/zk-utils-go/socket"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"regexp"
 	"strings"
 )
@@ -87,12 +88,12 @@ func (handler *EbpfHandler) handleSingleTrace(cleanedJsonString string, errorMes
 
 	ebpfDataForSpan := &zkUtilsOtel.EbpfEntryDataForSpan{
 		ContentType:  ebpfDataResponse.ContentType,
-		ReqHeaders:   ebpfDataResponse.ReqHeaders,
+		ReqHeaders:   GetHeaders(ebpfDataResponse.ReqHeaders),
 		ReqMethod:    ebpfDataResponse.ReqMethod,
 		ReqPath:      ebpfDataResponse.ReqPath,
 		ReqBodySize:  ebpfDataResponse.ReqBodySize,
 		ReqBody:      ebpfDataResponse.ReqBody,
-		RespHeaders:  ebpfDataResponse.RespHeaders,
+		RespHeaders:  GetHeaders(ebpfDataResponse.RespHeaders),
 		RespStatus:   ebpfDataResponse.RespStatus,
 		RespMessage:  ebpfDataResponse.RespMessage,
 		RespBodySize: ebpfDataResponse.RespBodySize,
@@ -159,4 +160,23 @@ func splitTraces(traces string) []string {
 		parts[i] = "{" + parts[i] + "}"
 	}
 	return parts
+}
+
+func GetHeaders(jsonStr string) *zkUtilsOtel.KeyValueList {
+	var result map[string]string
+
+	err := json.Unmarshal([]byte(jsonStr), &result)
+	if err != nil {
+		logger.Error(ebpfHandlerLogTag, "Error while unmarshalling headers: ", err)
+		return nil
+	}
+	var keyValueList []*v1.KeyValue
+	for key, value := range result {
+		keyValueList = append(keyValueList, &v1.KeyValue{
+			Key:   key,
+			Value: &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: value}},
+		})
+	}
+
+	return &zkUtilsOtel.KeyValueList{KeyValueList: keyValueList}
 }
