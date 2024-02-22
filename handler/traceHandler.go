@@ -8,7 +8,7 @@ import (
 	"github.com/zerok-ai/zk-observer/config"
 	"github.com/zerok-ai/zk-observer/model"
 	"github.com/zerok-ai/zk-observer/stores/badger"
-	redis2 "github.com/zerok-ai/zk-observer/stores/redis"
+	"github.com/zerok-ai/zk-observer/stores/redis"
 	"github.com/zerok-ai/zk-observer/utils"
 	_ "github.com/zerok-ai/zk-utils-go/common"
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
@@ -36,22 +36,20 @@ type SpanForStorage interface {
 type TraceHandler struct {
 	traceStore                   sync.Map
 	traceStoreMutex              sync.Mutex
-	traceRedisHandler            *redis2.TraceRedisHandler
+	traceRedisHandler            *redis.TraceRedisHandler
 	traceBadgerHandler           *badger.TraceBadgerHandler
-	traceBadgerHandler           *badger.TraceBadgerHandler
-	exceptionHandler             *redis2.ExceptionRedisHandler
-	resourceDetailsHandler       *redis2.ResourceRedisHandler
-	resourceAndScoperAttrHandler *redis.ResourceAndScopeAttributesHandler
+	exceptionHandler             *redis.ExceptionRedisHandler
+	resourceDetailsHandler       *redis.ResourceRedisHandler
 	serviceListHandler           *redis.ServiceListRedisHandler
-	resourceAndScoperAttrHandler *redis2.ResourceAndScopeAttributesHandler
+	resourceAndScoperAttrHandler *redis.ResourceAndScopeAttributesHandler
 	otlpConfig                   *config.OtlpConfig
-	spanFilteringHandler         *redis2.SpanFilteringHandler
+	spanFilteringHandler         *redis.SpanFilteringHandler
 	factory                      stores.StoreFactory
 }
 
 func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
 	handler := TraceHandler{}
-	traceRedisHandler, err := redis2.NewTracesRedisHandler(config)
+	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
@@ -63,19 +61,19 @@ func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*T
 		return nil, err
 	}
 
-	resourceAndScopeAttrRedisHandler, err := redis2.NewResourceAndScopeAttributesHandler(config)
+	resourceAndScopeAttrRedisHandler, err := redis.NewResourceAndScopeAttributesHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
 		return nil, err
 	}
 
-	exceptionHandler, err := redis2.NewExceptionHandler(config)
+	exceptionHandler, err := redis.NewExceptionHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating exception handler:", err)
 		return nil, err
 	}
 
-	resourceHandler, err := redis2.NewResourceDetailsHandler(config)
+	resourceHandler, err := redis.NewResourceDetailsHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating resource details handler:", err)
 		return nil, err
@@ -174,7 +172,7 @@ func (th *TraceHandler) processOTelSpanEvents(span *tracev1.Span) ([]zkUtilsComm
 }
 
 func (th *TraceHandler) processOTelSpanException(spanIdStr string, event *tracev1.Span_Event) string {
-	exceptionDetails := redis2.CreateExceptionDetails(event)
+	exceptionDetails := redis.CreateExceptionDetails(event)
 	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while syncing exception data for spanId ", spanIdStr, " with error ", err)
@@ -383,7 +381,7 @@ func (th *TraceHandler) createSpanDetails(span *tracev1.Span, resourceAttrMap ma
 }
 
 func (th *TraceHandler) createExceptionDetails(span *tracev1.Span, event *tracev1.Span_Event) model.SpanErrorInfo {
-	exceptionDetails := redis2.CreateExceptionDetails(event)
+	exceptionDetails := redis.CreateExceptionDetails(event)
 	spanIdStr := hex.EncodeToString(span.SpanId)
 	hash, err := th.exceptionHandler.SyncExceptionData(exceptionDetails, spanIdStr)
 	if err != nil {
