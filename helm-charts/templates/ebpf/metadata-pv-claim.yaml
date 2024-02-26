@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metadata-pv-claim
+  labels:
+    app: zk-observer
+    component: vizier
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.metadataPvClaim.storageRequest | quote }}

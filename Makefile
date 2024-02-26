@@ -22,6 +22,12 @@ buildAndPush: build
 	docker build -t ${IMG} .
 	docker push ${IMG}
 
+docker-build-push-multiarch:
+	docker buildx rm ${BUILDER_NAME} || true
+	docker buildx create --use --platform=linux/arm64,linux/amd64 --name ${BUILDER_NAME}
+	docker buildx build --platform=linux/arm64,linux/amd64 --push --tag ${IMG_VER} .
+	docker buildx rm ${BUILDER_NAME}
+
 ci-cd-build: sync
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/$(NAME)-amd64 cmd/main.go
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/$(NAME)-arm64 cmd/main.go

@@ -1,0 +1,271 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk-ebpf-nats
+  labels:
+    app: zk-observer
+    name: zk-ebpf-nats
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.plNats.replicas }}
+  selector:
+    matchLabels:
+      app: zk-observer
+      name: zk-ebpf-nats
+  serviceName: zk-ebpf-nats
+  template:
+    metadata:
+      labels:
+        app: zk-observer
+        name: zk-ebpf-nats
+        plane: control
+    spec:
+      containers:
+      - command:
+        - nats-server
+        - --config
+        - /etc/nats-config/nats.conf
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CLUSTER_ADVERTISE
+          value: {{ quote .Values.plNats.plNats.env.clusterAdvertise }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.plNats.plNats.image.repository }}:{{ .Values.plNats.plNats.image.tag
+          | default .Chart.AppVersion }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - /nats-server -sl=ldm=/var/run/nats/nats.pid && /bin/sleep 60
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8222
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        name: zk-ebpf-nats
+        ports:
+        - containerPort: 4222
+          name: client
+        - containerPort: 7422
+          name: leafnodes
+        - containerPort: 6222
+          name: cluster
+        - containerPort: 8222
+          name: monitor
+        - containerPort: 7777
+          name: metrics
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8222
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        resources: {}
+        securityContext: {{- toYaml .Values.plNats.plNats.containerSecurityContext
+          | nindent 10 }}
+        volumeMounts:
+        - mountPath: /etc/nats-config
+          name: config-volume
+        - mountPath: /etc/nats-server-tls-certs
+          name: nats-server-tls-volume
+        - mountPath: /var/run/nats
+          name: pid
+      securityContext:
+        fsGroup: 10100
+        runAsGroup: 10100
+        runAsNonRoot: true
+        runAsUser: 10100
+        seccompProfile:
+          type: RuntimeDefault
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 60
+      tolerations:
+      - effect: NoSchedule
+        key: kubernetes.io/arch
+        operator: Equal
+        value: amd64
+      - effect: NoExecute
+        key: kubernetes.io/arch
+        operator: Equal
+        value: amd64
+      - effect: NoSchedule
+        key: kubernetes.io/arch
+        operator: Equal
+        value: arm64
+      - effect: NoExecute
+        key: kubernetes.io/arch
+        operator: Equal
+        value: arm64
+      volumes:
+      - name: nats-server-tls-volume
+        secret:
+          secretName: service-tls-certs
+      - configMap:
+          name: nats-config
+        name: config-volume
+      - emptyDir: {}
+        name: pid
+  updateStrategy: {}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk-ebpf-metadata
+  labels:
+    app: zk-observer
+    component: vizier
+  {{- include "helm-charts.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.metadata.replicas }}
+  selector:
+    matchLabels:
+      app: zk-observer
+      component: vizier
+      name: zk-ebpf-metadata
+  serviceName: zk-ebpf-metadata
+  template:
+    metadata:
+      annotations:
+        px.dev/metrics_port: "50400"
+        px.dev/metrics_scrape: "true"
+      labels:
+        app: zk-observer
+        component: vizier
+        name: zk-ebpf-metadata
+        plane: control
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: Exists
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+            - matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: Exists
+              - key: beta.kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      containers:
+      - env:
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PL_MAX_EXPECTED_CLOCK_SKEW
+          value: {{ quote .Values.metadata.app.env.plMaxExpectedClockSkew }}
+        - name: PL_RENEW_PERIOD
+          value: {{ quote .Values.metadata.app.env.plRenewPeriod }}
+        - name: PL_ETCD_OPERATOR_ENABLED
+          value: {{ quote .Values.metadata.app.env.plEtcdOperatorEnabled }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        envFrom:
+        - configMapRef:
+            name: pl-tls-config
+        image: {{ .Values.metadata.app.image.repository }}:{{ .Values.metadata.app.image.tag
+          | default .Chart.AppVersion }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 50400
+            scheme: HTTPS
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        name: app
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /healthz
+            port: 50400
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources: {}
+        securityContext: {{- toYaml .Values.metadata.app.containerSecurityContext |
+          nindent 10 }}
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+        - mountPath: /metadata
+          name: metadata-volume
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - set -xe; URL="${PROTOCOL}://${SERVICE_NAME}:${SERVICE_PORT}${HEALTH_PATH}";
+          until [ $(curl -m 0.5 -s -o /dev/null -w "%{http_code}" -k ${URL}) -eq 200
+          ]; do echo "waiting for ${URL}"; sleep 2; done;
+        env:
+        - name: SERVICE_NAME
+          value: {{ quote .Values.metadata.natsWait.env.serviceName }}
+        - name: SERVICE_PORT
+          value: {{ quote .Values.metadata.natsWait.env.servicePort }}
+        - name: HEALTH_PATH
+          value: {{ quote .Values.metadata.natsWait.env.healthPath }}
+        - name: PROTOCOL
+          value: {{ quote .Values.metadata.natsWait.env.protocol }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.metadata.natsWait.image.repository }}:{{ .Values.metadata.natsWait.image.tag
+          | default .Chart.AppVersion }}
+        name: nats-wait
+        resources: {}
+        securityContext: {{- toYaml .Values.metadata.natsWait.containerSecurityContext
+          | nindent 10 }}
+      securityContext:
+        fsGroup: 10100
+        runAsGroup: 10100
+        runAsNonRoot: true
+        runAsUser: 10100
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: zk-ebpf-metadata-service-account
+      tolerations:
+      - effect: NoSchedule
+        key: kubernetes.io/arch
+        operator: Equal
+        value: amd64
+      - effect: NoExecute
+        key: kubernetes.io/arch
+        operator: Equal
+        value: amd64
+      - effect: NoSchedule
+        key: kubernetes.io/arch
+        operator: Equal
+        value: arm64
+      - effect: NoExecute
+        key: kubernetes.io/arch
+        operator: Equal
+        value: arm64
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - name: metadata-volume
+        persistentVolumeClaim:
+          claimName: metadata-pv-claim
+  updateStrategy:
+    type: RollingUpdate

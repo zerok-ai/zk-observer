@@ -22,3 +22,164 @@ ports:
   nodePort: 31602
 
 type: NodePort
+
+metadata:
+  app:
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    env:
+      plEtcdOperatorEnabled: "false"
+      plMaxExpectedClockSkew: "2000"
+      plRenewPeriod: "7500"
+    image:
+      repository: us-west1-docker.pkg.dev/black-scope-358204/zk-client/vizier-metadata_server_image
+      tag: 0.0.2-json
+  natsWait:
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    env:
+      healthPath: ""
+      protocol: http
+      serviceName: zk-ebpf-nats-mgmt
+      servicePort: "8222"
+    image:
+      repository: gcr.io/pixie-oss/pixie-dev-public/curl:multiarch-7.87.0@sha256
+      tag: f7f265d5c64eb4463a43a99b6bf773f9e61a50aaa7cefaf564f43e42549a01dd
+  replicas: 1
+metadataServiceAccount:
+  serviceAccount:
+    annotations: {}
+metadataSvc:
+  ports:
+    - name: tcp-http2
+      port: 50400
+      protocol: TCP
+      targetPort: 50400
+  type: ClusterIP
+natsConfig:
+  natsConf: |-
+    pid_file: "/var/run/nats/nats.pid"
+    http: 8222
+    tls {
+      ca_file: "/etc/nats-server-tls-certs/ca.crt",
+      cert_file: "/etc/nats-server-tls-certs/server.crt",
+      key_file: "/etc/nats-server-tls-certs/server.key",
+      timeout: 3
+      verify: true
+    }
+pem:
+  pem:
+    containerSecurityContext:
+      capabilities:
+        add:
+        - SYS_PTRACE
+        - SYS_ADMIN
+      privileged: true
+      seccompProfile:
+        type: RuntimeDefault
+    env:
+      plClientTlsCert: /certs/client.crt
+      plClientTlsKey: /certs/client.key
+      plClockConverter: default
+      plDisableSsl: "false"
+      plHostPath: /host
+      plTlsCaCert: /certs/ca.crt
+      tcmallocSampleParameter: "1048576"
+    image:
+      repository: us-west1-docker.pkg.dev/black-scope-358204/zk-client/vizier-pem_image
+      tag: 0.0.2-json
+    imagePullPolicy: Always
+collector:
+  image:
+    repository: us-west1-docker.pkg.dev/zerok-dev/zk-client/zk-socket-server
+    tag: latest
+  imagePullPolicy: Always
+plClusterSecrets:
+  clusterId: "gke_zerok-dev_us-west1-b_onlyclient01"
+  clusterName: "gke_zerok-dev_us-west1-b_onlyclient01"
+  jwtSigningKey: ""
+  sentryDsn: ""
+plNats:
+  nameOverride: "zk-ebpf-nats"
+  plNats:
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    env:
+      clusterAdvertise: $(POD_NAME).zk-ebpf-nats.$(POD_NAMESPACE).svc
+    image:
+      repository: gcr.io/pixie-oss/pixie-prod/vizier-deps/nats:2.9.19-scratch@sha256
+      tag: 5de59286eb54ead4d4a9279846098d4097b9c17a3c0588182398a7250cde1af9
+  ports:
+    - name: client
+      port: 4222
+      targetPort: 0
+  replicas: 1
+  type: ClusterIP
+plNatsMgmt:
+  ports:
+    - name: cluster
+      port: 6222
+      targetPort: 0
+    - name: monitor
+      port: 8222
+      targetPort: 0
+    - name: metrics
+      port: 7777
+      targetPort: 0
+    - name: leafnodes
+      port: 7422
+      targetPort: 0
+    - name: gateways
+      port: 7522
+      targetPort: 0
+  type: ClusterIP
+plTlsConfig:
+  plClientTlsCert: /certs/client.crt
+  plClientTlsKey: /certs/client.key
+  plServerTlsCert: /certs/server.crt
+  plServerTlsKey: /certs/server.key
+  plTlsCaCert: /certs/ca.crt
+pvc:
+  metadataPvClaim:
+    storageRequest: 16Gi
+zkClientDbConfigmap:
+  zkClientDbConfigmapYaml: |-
+    redis:
+      port: 6379
+      readTimeout: 20
+    postgres:
+      host: postgreshost
+      port: 1234
+      user: postgres
+      password: abc
+      dbname: 1
+zpixieConfigmap:
+  zpixieConfigmapYaml: |-
+    allowNonTraced: false
+    http:
+      enabled: true
+      traceEnabled: true
+      allowNonTraced: false
+    mysql:
+      enabled: true
+      traceEnabled: true
+      allowNonTraced: false
+    pgsql:
+      enabled: true
+      traceEnabled: true
+      allowNonTraced: false

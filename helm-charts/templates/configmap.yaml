@@ -48,6 +48,9 @@ data:
       syncDuration: 30
       batchSize: 30
       ttl: 3600
+    tcpServerConfig:
+      port: 8080
+      sendAck: true
     services:
       syncDuration: 30
       batchSize: 30

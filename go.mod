@@ -3,14 +3,14 @@ module github.com/zerok-ai/zk-observer
 go 1.21
 
 require (
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.3
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/kataras/iris/v12 v12.2.7
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.2.1
-	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240208055206-f9774b46abb0
+	github.com/zerok-ai/zk-utils-go v0.5.21-badger.0.20240226061352-dba9153a9069
 	go.opentelemetry.io/proto/otlp v1.0.0
-	google.golang.org/grpc v1.58.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
@@ -44,7 +44,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.15.5 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
@@ -99,8 +98,9 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indi rect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

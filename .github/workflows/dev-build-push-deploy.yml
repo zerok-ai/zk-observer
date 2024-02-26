@@ -50,4 +50,5 @@ jobs:
       ENVIRONMENT: ${{ needs.init.outputs.ENVIRONMENT }}
     secrets:
       GKE_SA_KEY: ${{ secrets.GKE_SA_KEY_DEV }}
+      HELM_SECRETS_ARGS: --set=plClusterSecrets.jwtSigningKey=${{ secrets.JWT_SIGNING_KEY_DEV }}
     needs: [init,build-push]

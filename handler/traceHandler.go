@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/iris/v12"
 	"github.com/zerok-ai/zk-observer/common"
@@ -14,8 +15,8 @@ import (
 	zkUtilsCommonModel "github.com/zerok-ai/zk-utils-go/common"
 	logger "github.com/zerok-ai/zk-utils-go/logs"
 	"github.com/zerok-ai/zk-utils-go/podDetails"
+	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto"
 	zkUtilsEnrichedSpan "github.com/zerok-ai/zk-utils-go/proto/enrichedSpan"
-	zkUtilsOtel "github.com/zerok-ai/zk-utils-go/proto/opentelemetry"
 	ExecutorModel "github.com/zerok-ai/zk-utils-go/scenario/model"
 	"github.com/zerok-ai/zk-utils-go/scenario/model/evaluators/cache"
 	"github.com/zerok-ai/zk-utils-go/storage/redis/stores"
@@ -47,17 +48,11 @@ type TraceHandler struct {
 	factory                      stores.StoreFactory
 }
 
-func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory) (*TraceHandler, error) {
+func NewTraceHandler(config *config.OtlpConfig, factory stores.StoreFactory, traceBadgerHandler *badger.TraceBadgerHandler) (*TraceHandler, error) {
 	handler := TraceHandler{}
 	traceRedisHandler, err := redis.NewTracesRedisHandler(config)
 	if err != nil {
 		logger.Error(traceLogTag, "Error while creating redis handler:", err)
-		return nil, err
-	}
-
-	traceBadgerHandler, err := badger.NewTracesBadgerHandler(config)
-	if err != nil {
-		logger.Error(traceLogTag, "Error while creating badger handler:", err)
 		return nil, err
 	}
 
@@ -139,7 +134,7 @@ func (th *TraceHandler) PushDataToRedis() {
 	th.deleteFromTraceStore(keysToDelete)
 
 	th.traceRedisHandler.SyncPipeline()
-	th.traceBadgerHandler.SyncPipeline()
+	//th.traceBadgerHandler.SyncPipeline()
 	th.exceptionHandler.SyncPipeline()
 	th.resourceDetailsHandler.SyncPipeline()
 	th.spanFilteringHandler.SyncPipeline()
@@ -239,6 +234,8 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 					continue
 				}
 
+				logger.Debug(traceLogTag, "Processing span ", spanId, " for trace ", traceId)
+
 				key := traceId + delimiter + spanId
 				var resourceIp string
 				spanAttributes := utils.ConvertKVListToMap(span.Attributes)
@@ -293,7 +290,7 @@ func (th *TraceHandler) ProcessTraceData(resourceSpans []*tracev1.ResourceSpans)
 			}
 		}
 	}
-	defer logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
+	logger.InfoF(traceLogTag, "Processed %v spans", processedSpanCount)
 }
 
 func (th *TraceHandler) EvalAndStoreZkSpan() {
@@ -463,24 +460,57 @@ func (th *TraceHandler) pushSpansToRedisPipeline() []string {
 }
 
 func (th *TraceHandler) GetBulkDataFromBadgerForPrefix(prefixList []string) (*zkUtilsOtel.BadgerResponseList, error) {
-	traceToDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
-	var resp *zkUtilsOtel.BadgerResponseList
+	logger.Debug(traceLogTag, "Getting bulk data from badger for prefix list ", prefixList)
+	//Getting saved from badger for the given prefix list.
+	traceDataMap, err := th.traceBadgerHandler.GetBulkDataForPrefixList(prefixList)
+
+	//Initializing response to empty value.
+	response := zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0), EbpfResponseList: make([]*zkUtilsOtel.BadgerEbpfResponse, 0)}
+
 	if err != nil {
 		logger.Error(traceLogTag, "Error while getting data from badger for prefix list ", prefixList, " error is ", err)
-		return resp, err
+		return &response, err
 	}
 
-	if len(traceToDataMap) > 0 {
-		resp = zkUtilsCommonModel.ToPtr(zkUtilsOtel.BadgerResponseList{ResponseList: make([]*zkUtilsOtel.BadgerResponse, 0)})
+	//Scenario where no data is found for the given prefix list.
+	if traceDataMap == nil {
+		return &response, nil
 	}
 
-	for k, v := range traceToDataMap {
-		var d zkUtilsOtel.BadgerResponse
-		d.Key = k
-		d.Value = v
-		resp.ResponseList = append(resp.ResponseList, &d)
+	//TraceDataMap contain a non-nil value here.
+	//The values can contain either otlp data or ebpf data.
+	//We need to differentiate between the two using the key.
+	for key, value := range *traceDataMap {
+
+		//Checking for ebpf scenario
+		if strings.Contains(key, "-e-") {
+			logger.Debug(traceLogTag, "Getting ebpf data for key ", key)
+			var d zkUtilsOtel.EbpfEntryDataForSpan
+			err := proto.Unmarshal([]byte(value), &d)
+			if err != nil {
+				logger.Error(traceLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
+				continue
+			}
+			logger.Debug(traceLogTag, "Ebpf data for key ", key, " is ", d.ReqHeaders)
+			response.EbpfResponseList = append(response.EbpfResponseList, &zkUtilsOtel.BadgerEbpfResponse{
+				Key:   key,
+				Value: &d,
+			})
+		} else {
+			//For now assuming that else scenario is otlp data.
+			var d zkUtilsOtel.OtelEnrichedRawSpanForProto
+			err := proto.Unmarshal([]byte(value), &d)
+			if err != nil {
+				logger.Error(traceLogTag, fmt.Sprintf("Error while unmarshalling data from badger for given tracePrefixList: %v", prefixList), err)
+				continue
+			}
+			response.ResponseList = append(response.ResponseList, &zkUtilsOtel.BadgerResponse{
+				Key:   key,
+				Value: &d,
+			})
+		}
+
 	}
 
-	return resp, nil
-
+	return &response, nil
 }
