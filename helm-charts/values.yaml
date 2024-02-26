@@ -1,11 +1,11 @@
 global:
-  dockerBase: "us-west1-docker.pkg.dev/zerok-dev/zk-client/onlyclient01"
+  dockerBase: "zerokai"
 
 replicaCount: 1
 
 image:
   repo: zk-observer
-  tag: "0.0.3-ebpf"
+  tag: "latest"
   pullPolicy: Always
 
 kubernetesClusterDomain: cluster.local
