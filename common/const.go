@@ -26,5 +26,7 @@ const (
 	ScenarioWorkloadGenericNamespaceKey   = "*"
 	ScenarioWorkloadGenericDeploymentKey  = "*"
 
+	ServiceListKey = "service_list"
+
 	DefaultSchemaVersion = "1.7.0"
 )
